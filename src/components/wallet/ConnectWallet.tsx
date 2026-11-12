@@ -4,6 +4,11 @@ import React, { useEffect } from "react";
 import { useAccount, useDisconnect, useWalletModal } from "@/lib/near/hooks";
 import { shortenAccountId } from "@/lib/near/format";
 
+const CONNECTED_CLASS =
+  "px-5 py-2.5 border border-[#efe6d2]/30 text-[#efe6d2] text-[11px] font-semibold uppercase tracking-[0.25em] hover:border-[#e2b04a] hover:text-[#e2b04a] transition-colors";
+const CONNECT_CLASS =
+  "px-5 py-2.5 border border-[#c9973a] text-[#e2b04a] text-[11px] font-semibold uppercase tracking-[0.25em] hover:bg-[#c9973a] hover:text-[#120c08] transition-colors";
+
 export function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
@@ -24,7 +29,7 @@ export function ConnectWallet() {
     return (
       <button
         onClick={() => disconnect()}
-        className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white font-black uppercase text-[10px] tracking-widest hover:bg-white/20 transition-all rounded-lg"
+        className={CONNECTED_CLASS}
       >
         {shortenAccountId(address)}
       </button>
@@ -34,7 +39,7 @@ export function ConnectWallet() {
   return (
     <button
       onClick={() => openConnectModal?.()}
-      className="flex items-center gap-2 px-4 py-2 bg-primary text-black font-black uppercase text-[10px] tracking-widest hover:bg-white transition-all rounded-lg"
+      className={CONNECT_CLASS}
     >
       Connect NEAR Wallet
     </button>

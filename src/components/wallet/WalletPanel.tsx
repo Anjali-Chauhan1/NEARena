@@ -95,75 +95,61 @@ export function WalletPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-6 bg-gradient-to-br from-primary/10 to-accent/5 border border-primary/20 rounded-lg">
-      {/* Header with Balance */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 p-6 bg-[linear-gradient(160deg,#2a1d10_0%,#14100b_55%,#0c0a08_100%)] border border-[#8a6a2f]/60 text-[#efe6d2]">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Wallet className="w-5 h-5 text-primary" />
+          <Wallet className="w-5 h-5 text-[#e2b04a]" />
           <div className="flex flex-col">
-            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">BTQ Balance</span>
-            <span className="text-2xl font-black text-white italic tracking-tighter">{btqBalance.toFixed(2)}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#efe6d2]/50">BTQ Balance</span>
+            <span className="font-[family-name:var(--font-cinzel)] text-3xl font-bold text-[#f6efe1]">{btqBalance.toFixed(2)}</span>
           </div>
         </div>
         <button
           onClick={() => disconnect()}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600/20 border border-red-600/30 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-600/30 transition-all rounded-lg"
+          className="flex items-center gap-2 px-3 py-2 border border-[#a93226]/60 text-[#e74c3c] text-[10px] font-semibold uppercase tracking-[0.2em] hover:bg-[#a93226]/20 transition-colors"
         >
-          <LogOut className="w-4 h-4" />
-          LOGOUT
+          <LogOut className="w-3.5 h-3.5" />
+          Logout
         </button>
       </div>
 
-      {/* Address + Native Balance Display */}
-      <div className="flex items-center justify-between bg-black/20 px-3 py-2 rounded border border-white/5">
-        <span className="text-[11px] text-white/50 font-mono">{address ? shortenAccountId(address) : ""}</span>
-        <span className="text-[10px] text-primary/80 font-black">{nearBalance.toFixed(4)} NEAR</span>
+      <div className="flex items-center justify-between bg-black/30 px-3 py-2 border border-[#efe6d2]/10">
+        <span className="text-[11px] text-[#efe6d2]/55">{address ? shortenAccountId(address) : ""}</span>
+        <span className="text-[11px] font-semibold text-[#e2b04a]">{nearBalance.toFixed(4)} NEAR</span>
       </div>
 
-      {/* Action Buttons */}
       <div className="grid grid-cols-2 gap-3">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+        <button
           onClick={() => setShowBuyModal(!showBuyModal)}
-          className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/20 border border-primary/40 text-primary font-black uppercase text-[10px] tracking-widest hover:bg-primary/30 transition-all rounded-lg"
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-[#c9973a] text-[#120c08] text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#e2b04a] transition-colors"
         >
           <Plus className="w-4 h-4" />
-          BUY BTQ
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          Buy BTQ
+        </button>
+        <button
           onClick={() => setShowWithdrawModal(!showWithdrawModal)}
           disabled={btqBalance < minWithdrawBtq}
-          className={`flex items-center justify-center gap-2 px-4 py-3 border font-black uppercase text-[10px] tracking-widest rounded-lg transition-all ${
-            btqBalance >= minWithdrawBtq
-              ? "bg-secondary/20 border-secondary/40 text-secondary hover:bg-secondary/30"
-              : "bg-white/5 border-white/10 text-white/30 cursor-not-allowed"
-          }`}
+          className="flex items-center justify-center gap-2 px-4 py-3 border border-[#efe6d2]/30 text-[#efe6d2]/85 text-[11px] font-bold uppercase tracking-[0.2em] hover:border-[#e2b04a] hover:text-[#e2b04a] transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:border-[#efe6d2]/30 disabled:hover:text-[#efe6d2]/85"
         >
           <Send className="w-4 h-4" />
-          SELL BTQ
-        </motion.button>
+          Sell BTQ
+        </button>
       </div>
 
-      <p className="text-[9px] text-white/50 font-black uppercase tracking-widest">
-        Minimum withdraw: {minWithdrawBtq} BTQ
-      </p>
+      <p className="text-[10px] uppercase tracking-[0.25em] text-[#efe6d2]/40">Minimum withdraw: {minWithdrawBtq} BTQ</p>
 
-      {/* Buy Modal */}
       <AnimatePresence>
         {showBuyModal && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-black/40 border border-primary/20 rounded-lg p-4 space-y-3"
+            className="bg-black/35 border border-[#8a6a2f]/50 p-4 space-y-3 overflow-hidden"
           >
-            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest">Buy BTQ</h4>
-            <p className="text-[9px] text-white/60">Rate: 1 BTQ = {NEAR_PER_BTQ} NEAR</p>
-
+            <div className="flex items-center justify-between">
+              <h4 className="font-[family-name:var(--font-cinzel)] text-sm font-bold tracking-[0.15em] text-[#e2b04a]">Buy BTQ</h4>
+              <p className="text-[10px] text-[#efe6d2]/50">1 BTQ = {NEAR_PER_BTQ} NEAR</p>
+            </div>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -171,67 +157,57 @@ export function WalletPanel() {
                 max={maxBuyable}
                 value={buyAmount}
                 onChange={(e) => setBuyAmount(Math.max(0, Number(e.target.value)))}
-                className="bg-black/60 border border-white/10 px-3 py-2 text-white rounded flex-1 text-[10px]"
+                className="min-w-0 flex-1 bg-black/50 border border-[#efe6d2]/15 px-3 py-2 text-sm text-[#f6efe1] outline-none focus:border-[#e2b04a]"
                 placeholder="Amount"
               />
               <button
                 onClick={() => setBuyAmount(maxBuyable)}
-                className="px-3 py-2 bg-white/10 border border-white/20 text-white/80 font-black text-[9px] tracking-widest rounded hover:bg-white/20 transition-all"
+                className="px-3 py-2 border border-[#efe6d2]/20 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#efe6d2]/75 hover:border-[#e2b04a] hover:text-[#e2b04a] transition-colors"
               >
-                MAX
+                Max
               </button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={handleBuy}
                 disabled={isPending || operation === "buy" || !hasEnoughFunds || buyAmount <= 0}
-                className="px-4 py-2 bg-primary text-black font-bold rounded hover:bg-white transition-all disabled:opacity-50"
+                className="px-4 py-2 bg-[#c9973a] text-[#120c08] text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#e2b04a] transition-colors disabled:opacity-40"
               >
-                {isPending && operation === "buy" ? "..." : "BUY"}
-              </motion.button>
+                {isPending && operation === "buy" ? "..." : "Buy"}
+              </button>
             </div>
-
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] text-white/60">Cost: ~{requiredNear.toFixed(4)} NEAR</p>
-              <p className={`text-[9px] font-bold ${hasEnoughFunds ? "text-emerald-400" : "text-red-400"}`}>
-                {hasEnoughFunds ? `✓ Affordable (max ${maxBuyable})` : `✗ Need more NEAR (max ${maxBuyable})`}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] text-[#efe6d2]/55">Cost: ~{requiredNear.toFixed(4)} NEAR</p>
+              <p className={`text-[10px] font-semibold ${hasEnoughFunds ? "text-[#3fae5a]" : "text-[#e74c3c]"}`}>
+                {hasEnoughFunds ? `Affordable (max ${maxBuyable})` : `Need more NEAR (max ${maxBuyable})`}
               </p>
             </div>
-
-            {isPending && operation === "buy" && <p className="text-[9px] text-white/80">Waiting for confirmation...</p>}
+            {isPending && operation === "buy" && <p className="text-[10px] text-[#efe6d2]/75">Waiting for confirmation...</p>}
             {buyStatus && (
-              <p className={`text-[9px] ${buyStatus.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{buyStatus}</p>
+              <p className={`text-[10px] break-words ${buyStatus.startsWith("✓") ? "text-[#3fae5a]" : "text-[#e74c3c]"}`}>{buyStatus}</p>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Withdraw Modal */}
       <AnimatePresence>
         {showWithdrawModal && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-black/40 border border-secondary/20 rounded-lg p-4 space-y-3"
+            className="bg-black/35 border border-[#8a6a2f]/50 p-4 space-y-3 overflow-hidden"
           >
-            <h4 className="text-[10px] font-black text-secondary uppercase tracking-widest">Sell BTQ</h4>
-            <p className="text-[9px] text-white/60">Withdraw {btqBalance.toFixed(2)} BTQ to NEAR</p>
-            <p className="text-[9px] text-white/50">Minimum withdraw: {minWithdrawBtq} BTQ</p>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <h4 className="font-[family-name:var(--font-cinzel)] text-sm font-bold tracking-[0.15em] text-[#e2b04a]">Sell BTQ</h4>
+            <p className="text-[11px] text-[#efe6d2]/60">Withdraw {btqBalance.toFixed(2)} BTQ back to NEAR.</p>
+            <button
               onClick={handleWithdraw}
               disabled={isPending || operation === "withdraw" || btqBalance < minWithdrawBtq}
-              className="w-full px-4 py-2 bg-secondary text-white font-bold rounded hover:bg-secondary/90 transition-all disabled:opacity-50"
+              className="w-full px-4 py-2.5 bg-[#c9973a] text-[#120c08] text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#e2b04a] transition-colors disabled:opacity-40"
             >
-              {isPending && operation === "withdraw" ? "Processing..." : "WITHDRAW ALL"}
-            </motion.button>
-
-            {isPending && operation === "withdraw" && <p className="text-[9px] text-white/80">Waiting for confirmation...</p>}
+              {isPending && operation === "withdraw" ? "Processing..." : "Withdraw all"}
+            </button>
+            {isPending && operation === "withdraw" && <p className="text-[10px] text-[#efe6d2]/75">Waiting for confirmation...</p>}
             {withdrawStatus && (
-              <p className={`text-[9px] ${withdrawStatus.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{withdrawStatus}</p>
+              <p className={`text-[10px] break-words ${withdrawStatus.startsWith("✓") ? "text-[#3fae5a]" : "text-[#e74c3c]"}`}>{withdrawStatus}</p>
             )}
           </motion.div>
         )}

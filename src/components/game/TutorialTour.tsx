@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronRight, ChevronLeft, Target, Shield, Swords, Users, Zap, Coins } from "lucide-react";
+import { ChevronRight, ChevronLeft, Target, Coins, Gem, Box, Heart } from "lucide-react";
 
 interface TourStep {
     targetId?: string;
@@ -14,78 +14,36 @@ interface TourStep {
 
 const TOUR_STEPS: TourStep[] = [
     {
-        title: "Welcome to the Arena",
-        content: "You've been deployed to the tactical grid. Your mission: Dominate the sectors and outsmart your opponents.",
-        icon: <Target className="w-6 h-6 text-primary" />,
+        title: "Welcome to the Vault",
+        content: "One chest on this table holds the real treasure. The rest are decoys, and some spots hide traps. Find the treasure before your chances run out.",
+        icon: <Gem className="w-6 h-6" />,
         position: "center"
     },
     {
         targetId: "match-id-info",
-        title: "Mission Coordinates",
-        content: "This is your unique Match ID. All actions on this grid are synchronized in real-time for every connected player.",
-        icon: <Zap className="w-6 h-6 text-primary" />,
+        title: "Your Vault",
+        content: "Your current level and grid size. Practice levels are smaller; the Elite vault is a 6x6 grid where you set your own stake.",
+        icon: <Box className="w-6 h-6" />,
         position: "bottom"
     },
     {
         targetId: "stats-info",
-        title: "Vital Signs",
-        content: "Monitor your Armor (HP) and Trust (Reputation). Trust is crucial for alliances and affects how AI bots perceive you.",
-        icon: <Shield className="w-6 h-6 text-secondary" />,
+        title: "Chances",
+        content: "Every pick costs one chance. A trap costs two. Your stake and the BTQ you can win are shown just below.",
+        icon: <Heart className="w-6 h-6" />,
         position: "bottom"
     },
     {
         targetId: "arena-grid",
-        title: "The Battle Grid",
-        content: "Click any visible tile to move. You have a vision radius of 12 cells. Capture YELLOW zones for passive XP.",
-        icon: <Target className="w-6 h-6 text-accent" />,
+        title: "The Board",
+        content: "Click any chest or tile to open it. The real treasure is always inside a chest, but not every chest holds it.",
+        icon: <Target className="w-6 h-6" />,
         position: "right"
     },
     {
-        targetId: "btn-strike",
-        title: "Strike Protocol",
-        content: "Use STRIKE to engage enemies within 3 cells. Successful attacks grant points but risk retaliation.",
-        icon: <Swords className="w-6 h-6 text-primary" />,
-        position: "top"
-    },
-    {
-        targetId: "btn-defend",
-        title: "Shield Up",
-        content: "DEFEND to reduce incoming damage for the next few seconds. Timing is everything in the arena.",
-        icon: <Shield className="w-6 h-6 text-secondary" />,
-        position: "top"
-    },
-    {
-        targetId: "btn-alliance",
-        title: "Strategic Pacts",
-        content: "Propose an ALLIANCE to nearby players. Allies share vision and resource yields, doubling your efficiency.",
-        icon: <Users className="w-6 h-6 text-pink-500" />,
-        position: "top"
-    },
-    {
-        targetId: "btn-snatch",
-        title: "The Betrayal",
-        content: "Feeling greedy? SNATCH tokens to steal rewards from your ally. It boosts points but destroys your Trust score.",
-        icon: <Coins className="w-6 h-6 text-yellow-500" />,
-        position: "top"
-    },
-    {
-        targetId: "btn-pact",
-        title: "Diplomatic Pacts",
-        content: "Draft a formal agreement with another operative. Pact members share vision and can perform high-yield split actions.",
-        icon: <Users className="w-6 h-6 text-secondary" />,
-        position: "top"
-    },
-    {
-        targetId: "btn-split",
-        title: "Fair Share",
-        content: "Choose to SPLIT rewards with your ally for a steady, low-risk growth strategy. It builds maximum Trust.",
-        icon: <Zap className="w-6 h-6 text-primary" />,
-        position: "top"
-    },
-    {
-        title: "Begin Mission",
-        content: "The fog of war is lifting. Choose your strategy wisely. Good luck, Operative.",
-        icon: <Zap className="w-6 h-6 text-primary" />,
+        title: "Good Luck",
+        content: "Find the treasure to claim your BTQ on-chain. Run out of chances and the stake is lost.",
+        icon: <Coins className="w-6 h-6" />,
         position: "center"
     }
 ];
@@ -371,24 +329,28 @@ export function TutorialTour({ onComplete, steps: stepsProp }: TutorialTourProps
             {/* Backdrop spotlight implemented with 4 panels (reliable across browsers) */}
             <AnimatePresence>
                 <motion.div
+                    key="backdrop-top"
                     initial={false}
                     animate={{ height: coords.top }}
-                    className="absolute top-0 left-0 right-0 bg-black/86 backdrop-blur-[2px] z-10 pointer-events-auto"
+                    className="absolute top-0 left-0 right-0 bg-[#06070a]/85 z-10 pointer-events-auto"
                 />
                 <motion.div
+                    key="backdrop-bottom"
                     initial={false}
                     animate={{ top: coords.top + coords.height, height: Math.max(0, viewSize.h - (coords.top + coords.height)) }}
-                    className="absolute bottom-0 left-0 right-0 bg-black/86 backdrop-blur-[2px] z-10 pointer-events-auto"
+                    className="absolute bottom-0 left-0 right-0 bg-[#06070a]/85 z-10 pointer-events-auto"
                 />
                 <motion.div
+                    key="backdrop-left"
                     initial={false}
                     animate={{ top: coords.top, height: coords.height, width: coords.left }}
-                    className="absolute left-0 bg-black/86 backdrop-blur-[2px] z-10 pointer-events-auto"
+                    className="absolute left-0 bg-[#06070a]/85 z-10 pointer-events-auto"
                 />
                 <motion.div
+                    key="backdrop-right"
                     initial={false}
                     animate={{ top: coords.top, left: coords.left + coords.width, height: coords.height, width: Math.max(0, viewSize.w - (coords.left + coords.width)) }}
-                    className="absolute right-0 bg-black/86 backdrop-blur-[2px] z-10 pointer-events-auto"
+                    className="absolute right-0 bg-[#06070a]/85 z-10 pointer-events-auto"
                 />
             </AnimatePresence>
 
@@ -397,8 +359,8 @@ export function TutorialTour({ onComplete, steps: stepsProp }: TutorialTourProps
                 <motion.div
                     initial={false}
                     animate={{ top: coords.top - 10, left: coords.left - 10, width: coords.width + 20, height: coords.height + 20, opacity: 1 }}
-                    className="absolute rounded-xl z-30 pointer-events-none"
-                    style={{ border: '3px solid rgba(59,130,246,0.95)', boxShadow: '0 0 24px rgba(59,130,246,0.35), inset 0 0 12px rgba(59,130,246,0.12)' }}
+                    className="absolute z-30 pointer-events-none"
+                    style={{ border: '2px solid #e2b04a', boxShadow: '0 0 0 1px rgba(0,0,0,0.6), 0 0 28px rgba(226,176,74,0.25)' }}
                 />
             )}
 
@@ -410,48 +372,45 @@ export function TutorialTour({ onComplete, steps: stepsProp }: TutorialTourProps
                     initial={{ opacity: 0, scale: 0.95, y: 15 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -15 }}
-                    className="absolute pointer-events-auto bg-[#0a0a0a]/95 border border-white/10 glass-panel p-6 w-[320px] shadow-[0_0_80px_rgba(0,0,0,0.8)] z-40 max-h-[85vh] overflow-y-auto overflow-x-hidden scrollbar-hide"
+                    className="absolute pointer-events-auto bg-[linear-gradient(160deg,#2a1d10_0%,#14100b_55%,#0c0a08_100%)] border border-[#8a6a2f] p-6 w-[320px] shadow-[0_20px_60px_rgba(0,0,0,0.7)] z-40 max-h-[85vh] overflow-y-auto overflow-x-hidden scrollbar-hide text-[#efe6d2]"
                     style={tooltipPlacement.style}
                 >
-                    {/* Inner Glow */}
-                    <div className="absolute -inset-[1px] bg-gradient-to-br from-primary/30 via-transparent to-secondary/30 rounded-2xl -z-10 blur-[1px]" />
-
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-primary shadow-inner">
+                        <div className="w-11 h-11 shrink-0 flex items-center justify-center text-[#f3d28a] bg-[linear-gradient(160deg,#5a3d17_0%,#2a1b0c_55%,#140d06_100%)] border border-[#8a6a2f]">
                             {step.icon}
                         </div>
-                        <h4 className="text-lg font-black tracking-tighter text-white uppercase italic leading-none">{step.title}</h4>
+                        <h4 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-[#f6efe1] leading-tight">{step.title}</h4>
                     </div>
 
-                    <p className="text-gray-300 text-xs leading-relaxed mb-6 font-medium tracking-wide">
+                    <p className="text-[#efe6d2]/70 text-sm leading-relaxed mb-6">
                         {step.content}
                     </p>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="flex items-center justify-between pt-4 border-t border-[#efe6d2]/10">
                         <div className="flex items-center gap-3">
                             {currentStep > 0 && (
                                 <button
                                     onClick={handlePrev}
-                                    className="p-2 rounded-xl bg-white/5 border border-white/10 text-gray-500 hover:text-white transition-all hover:bg-white/10"
+                                    className="p-2 border border-[#efe6d2]/20 text-[#efe6d2]/60 hover:border-[#e2b04a] hover:text-[#e2b04a] transition-colors"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
                             )}
                             <button
                                 onClick={onComplete}
-                                className="px-3 py-2 text-[10px] font-black text-gray-400 hover:text-primary uppercase tracking-[0.2em] transition-all italic"
+                                className="px-2 py-2 text-[10px] font-semibold text-[#efe6d2]/45 hover:text-[#e2b04a] uppercase tracking-[0.25em] transition-colors"
                             >
                                 Skip
                             </button>
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <span className="text-[9px] font-black text-gray-600 tracking-[0.3em] uppercase">
+                            <span className="text-[10px] font-semibold text-[#efe6d2]/40 tracking-[0.25em] uppercase">
                                 {currentStep + 1} / {stepsList.length}
                             </span>
                             <button
                                 onClick={handleNext}
-                                className="flex items-center gap-2 px-5 py-2 bg-primary text-black font-black uppercase text-[10px] tracking-[0.1em] rounded group hover:scale-105 transition-all shadow-lg italic"
+                                className="group flex items-center gap-2 px-5 py-2 bg-[#c9973a] text-[#120c08] font-bold uppercase text-[10px] tracking-[0.2em] hover:bg-[#e2b04a] transition-colors"
                             >
                                 {currentStep === stepsList.length - 1 ? "Begin" : "Next"}
                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -461,7 +420,7 @@ export function TutorialTour({ onComplete, steps: stepsProp }: TutorialTourProps
                     {/* Arrow (only if pointing to something) */}
                     {step.targetId && tooltipPlacement.placement !== 'center' && (
                         <div
-                            className={`absolute w-3 h-3 bg-black border-white/10 rotate-45 z-[-1] pointer-events-none ${tooltipPlacement.placement === 'top' ? 'bottom-[-7px] left-1/2 -translate-x-1/2 border-b border-r' :
+                            className={`absolute w-3 h-3 bg-[#1a130b] border-[#8a6a2f] rotate-45 z-[-1] pointer-events-none ${tooltipPlacement.placement === 'top' ? 'bottom-[-7px] left-1/2 -translate-x-1/2 border-b border-r' :
                                     tooltipPlacement.placement === 'bottom' ? 'top-[-7px] left-1/2 -translate-x-1/2 border-t border-l' :
                                         tooltipPlacement.placement === 'left' ? 'right-[-7px] top-1/2 -translate-y-1/2 border-t border-r' :
                                             'left-[-7px] top-1/2 -translate-y-1/2 border-b border-l'

@@ -1,25 +1,12 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'BattleFont';
-  src: url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-}
-
 :root {
-  --background: #020203;
-  --foreground: #ffffff;
-  --primary: #00f2ff; /* Cyber Cyan */
-  --primary-glow: rgba(0, 242, 255, 0.4);
-  --secondary: #bc13fe; /* Neon Purple */
-  --secondary-glow: rgba(188, 19, 254, 0.4);
-  --accent: #ff003c; /* Cyber Red */
-  --accent-glow: rgba(255, 0, 60, 0.4);
-  --neon-yellow: #f3f315;
-  --neon-green: #05ffa1;
-  --warning: #ffb800;
-  --card-bg: rgba(13, 13, 18, 0.85);
-  --card-border: rgba(0, 242, 255, 0.2);
-  --grid-color: rgba(0, 242, 255, 0.05);
+  --background: #06070a;
+  --foreground: #efe6d2;
+  --primary: #e2b04a; /* gold */
+  --secondary: #8a6a2f; /* bronze */
+  --accent: #c0392b; /* blood red */
+  --warning: #d9a441;
 }
 
 @theme inline {
@@ -28,63 +15,21 @@
   --color-primary: var(--primary);
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
-  --color-neon-yellow: var(--neon-yellow);
-  --color-neon-green: var(--neon-green);
   --color-warning: var(--warning);
   --font-sans: var(--font-geist-sans), sans-serif;
-  
+
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-3xl: 1.25rem;
 }
 
 @layer utilities {
-  .cyber-grid {
-    background-image: 
-      linear-gradient(var(--grid-color) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-    background-size: 50px 50px;
+  .scrollbar-hide {
+    scrollbar-width: none;
   }
-
-  .cyber-border {
-    border: 1px solid var(--primary);
-    box-shadow: 0 0 10px var(--primary-glow);
-    clip-path: polygon(
-      0 0, 
-      calc(100% - 10px) 0, 
-      100% 10px, 
-      100% 100%, 
-      10px 100%, 
-      0 calc(100% - 10px)
-    );
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
-
-  .neon-text {
-    text-shadow: 0 0 5px var(--primary), 0 0 10px var(--primary-glow);
-  }
-
-  .neon-text-secondary {
-    text-shadow: 0 0 5px var(--secondary), 0 0 10px var(--secondary-glow);
-  }
-
-  .cyber-glitch {
-    animation: glitch 1s infinite linear alternate-reverse;
-  }
-
-  @keyframes glitch {
-    0% { transform: translate(0); }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(-2px, -2px); }
-    60% { transform: translate(2px, 2px); }
-    80% { transform: translate(2px, -2px); }
-    100% { transform: translate(0); }
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  overflow-x: hidden;
 }
 
 body {
@@ -96,89 +41,48 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Background effects */
-.bg-mesh-gradient {
-  background: 
-    radial-gradient(at 0% 0%, rgba(0, 242, 255, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(189, 0, 255, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(255, 0, 122, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, rgba(255, 184, 0, 0.05) 0px, transparent 50%);
+/* NEAR wallet-selector popup: replace its default blue palette with the NEARena gold theme.
+   The `html` prefix outranks the library's own light, dark and prefers-color-scheme rules. */
+html #near-wallet-selector-modal,
+html #near-wallet-selector-modal .dark-theme {
+  --backdrop-bg: #000000b3;
+  --heading-color: #f6efe1;
+  --text-color: #c9bda4;
+  --sidebar-border-color: #3a2f20;
+  --selected-wallet-bg: #c9973a;
+  --selected-wallet-bg-hover: #2a1d10;
+  --wallet-option-border-color: #8a6a2f40;
+  --wallet-option-bg-hover: #c9973a26;
+  --wallet-option-outline-color: #e2b04a;
+  --content-bg: #14100b;
+  --change-path-bg: #0c0a08;
+  --home-button-bg: #2a1d10;
+  --confirm-button-bg: #c9973a;
+  --confirm-button-bg-hover: #e2b04a;
+  --error: #e74c3c;
+  --close-button-bg-color: #2a1d10;
+  --close-button-fill-icon-color: #c9bda4;
+  --spinner-color: #e2b04a;
+  --bottom-section: #0c0a08;
+  --mobile-text: #c9bda4;
+  --connected-green: #3fae5a;
+  --gradient-dark-icon: radial-gradient(124.37% 124.37% at 91.67% -25%, #3a2614 0%, #14100b 100%);
+  --get-wallet-option-bg-color: #0000001f;
+  --get-wallet-option-bg-color-hover: #c9973a26;
+  --get-wallet-option-border-color: #3a2f20;
+  --get-wallet-outline-color: #e2b04a;
+  --secondary-button-bg-color: #c9973a29;
+  --secondary-button-border-color: #c9973a;
+  --secondary-button-text-color: #f6efe1;
+  --what-wallet-icon-color: #e2b04a;
+  --deprecated-icon-bg-color: #2a1d10;
+  --deprecated-icon-bg-color-selected: #c9973a;
 }
 
-.glass-panel {
-  background: var(--card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+html #near-wallet-selector-modal .nws-modal-wrapper .wallet-not-installed-wrapper .refresh-link {
+  color: #e2b04a;
 }
 
-.glass-panel:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(20, 20, 25, 0.8);
-}
-
-.neon-border-blue {
-  box-shadow: 0 0 20px var(--primary-glow), inset 0 0 10px rgba(0, 242, 255, 0.1);
-  border: 1px solid var(--primary);
-}
-
-.neon-border-purple {
-  box-shadow: 0 0 20px var(--secondary-glow), inset 0 0 10px rgba(189, 0, 255, 0.1);
-  border: 1px solid var(--secondary);
-}
-
-.neon-border-pink {
-  box-shadow: 0 0 20px var(--accent-glow), inset 0 0 10px rgba(255, 0, 122, 0.1);
-  border: 1px solid var(--accent);
-}
-
-.neon-text-blue {
-  text-shadow: 0 0 15px var(--primary-glow);
-  color: var(--primary);
-}
-
-.neon-text-purple {
-  text-shadow: 0 0 15px var(--secondary-glow);
-  color: var(--secondary);
-}
-
-.neon-text-pink {
-  text-shadow: 0 0 15px var(--accent-glow);
-  color: var(--accent);
-}
-
-/* Animations */
-@keyframes aurora {
-  0% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(100px, 100px) scale(1.2); }
-  66% { transform: translate(-100px, 50px) scale(0.8); }
-  100% { transform: translate(0, 0) scale(1); }
-}
-
-.animate-aurora {
-  animation: aurora 20s infinite ease-in-out;
-}
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100%); }
-}
-
-.scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to bottom, transparent, var(--primary), transparent);
-  opacity: 0.1;
-  animation: scanline 4s linear infinite;
-  pointer-events: none;
-}
-
-/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -186,15 +90,8 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  background: rgba(138, 106, 47, 0.45);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.text-gradient-primary {
-  background: linear-gradient(to right, var(--primary), var(--secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: rgba(226, 176, 74, 0.6);
 }
