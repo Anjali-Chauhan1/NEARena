@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useGameStore } from "@/store/useGameStore";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { TutorialTour } from "@/components/game/TutorialTour";
@@ -15,6 +16,15 @@ import { GameRulesOverlay } from "@/components/solo/GameRulesOverlay";
 import { GameScreen } from "@/components/solo/GameScreen";
 import { StakeConfirmation } from "@/components/solo/StakeConfirmation";
 import { useSyncBtqBalance } from "@/hooks/useSyncBtqBalance";
+
+const SoloArena3D = dynamic(() => import("@/components/solo/SoloArena3D"), { ssr: false });
+
+const SoloBackdrop = ({ gridSize }: { gridSize: number }) => (
+    <div className="fixed inset-0 pointer-events-none">
+        <SoloArena3D gridSize={gridSize} tiles={[]} canAct={false} onTile={() => {}} shakeKey={0} idle />
+        <div className="absolute inset-0 bg-black/35" />
+    </div>
+);
 
 export default function Arena() {
     const [mode, setMode] = useState("solo");
@@ -63,9 +73,9 @@ export default function Arena() {
 
         return (
             <AuthGuard>
-                <main className="min-h-screen bg-[#020203] font-mono text-white cyber-grid relative overflow-y-auto">
-                    <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[100] bg-[length:100%_2px,3px_100%]" />
-                    
+                <main className="min-h-screen bg-[#0b0a08] text-white relative overflow-y-auto">
+                    <SoloBackdrop gridSize={solo.level > 3 ? 6 : 4} />
+                    <div className="relative z-10">
                     <AnimatePresence mode="wait">
                         {solo.gameStatus === 'selecting' && (
                             <motion.div 
@@ -98,6 +108,7 @@ export default function Arena() {
                             </motion.div>
                         )}
                     </AnimatePresence>
+                    </div>
                 </main>
             </AuthGuard>
         );
@@ -106,7 +117,8 @@ export default function Arena() {
     // Default Gameplay Layout
     return (
       <AuthGuard>
-        <div className="relative h-screen bg-black overflow-hidden font-mono text-white">
+        <div className="relative h-screen bg-[#0b0a08] overflow-hidden text-white">
+            {solo.gameStatus === 'rules' && <SoloBackdrop gridSize={solo.gridSize} />}
             <AnimatePresence>
                 {/* Main Game Screen */}
                 {(solo.gameStatus === 'playing' || solo.gameStatus === 'won' || solo.gameStatus === 'lost') && (
