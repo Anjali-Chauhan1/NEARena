@@ -1,17 +1,71 @@
 "use client";
 
-import { motion, AnimatePresence, Variants } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { 
-  Shield, Target, Zap, Swords, ChevronRight, Globe, TrendingUp, 
-  Terminal, Activity, Cpu, Fingerprint, Lock, Radio
-} from "lucide-react";
-import { FeatureCard } from "@/components/ui/FeatureCard";
-import { useState, useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Box, Coins, Skull, Swords, ArrowRight } from "lucide-react";
 import { useAccount, useWalletModal } from "@/lib/near/hooks";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
 
-export default function Onboarding() {
+const HeroScene = dynamic(() => import("@/components/landing/HeroScene"), { ssr: false });
+
+const display = "font-[family-name:var(--font-cinzel)]";
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.9, delay: 0.15 + i * 0.12, ease: [0.16, 1, 0.3, 1] },
+  }),
+};
+
+interface Row {
+  id: string;
+  index: string;
+  label: string;
+  title: string;
+  text: string;
+  icon: ReactNode;
+}
+
+const ROWS: Row[] = [
+  {
+    id: "solo",
+    index: "/01",
+    label: "Solo mode",
+    title: "The Vault",
+    text: "One chest holds the treasure. The rest are decoys and traps. Find it before your chances run out.",
+    icon: <Box className="w-10 h-10" strokeWidth={1.4} />,
+  },
+  {
+    id: "duel",
+    index: "/02",
+    label: "Duel mode",
+    title: "The Duel Table",
+    text: "Sit across from a real rival. Take turns opening chests: guns, bombs, shields and scans decide who walks away.",
+    icon: <Swords className="w-10 h-10" strokeWidth={1.4} />,
+  },
+  {
+    id: "token",
+    index: "/03",
+    label: "On-chain",
+    title: "BTQ on NEAR",
+    text: "Buy BTQ with NEAR, stake it on every round, and cash out your winnings. Every result settles on NEAR testnet.",
+    icon: <Coins className="w-10 h-10" strokeWidth={1.4} />,
+  },
+  {
+    id: "dealer",
+    index: "/04",
+    label: "The house",
+    title: "The Dealer",
+    text: "He never blinks and never leaves the table. Clear the practice vaults to earn a seat in his elite arena.",
+    icon: <Skull className="w-10 h-10" strokeWidth={1.4} />,
+  },
+];
+
+export default function Landing() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { isConnected } = useAccount();
@@ -21,7 +75,7 @@ export default function Onboarding() {
     setMounted(true);
   }, []);
 
-  const handleJoin = () => {
+  const handleEnter = () => {
     if (!isConnected) {
       openConnectModal?.();
       return;
@@ -31,187 +85,143 @@ export default function Onboarding() {
 
   if (!mounted) return null;
 
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.1 }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 15 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
-  };
-
   return (
-    <main className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-[#020203] text-white font-mono cyber-grid py-12">
-      {/* Background Atmosphere */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[100] bg-[length:100%_2px,3px_100%]" />
-      
-      {/* Dynamic Aurora Glows (No Text Glow) */}
-      <div className="absolute top-[-5%] left-[-5%] w-[1200px] h-[1200px] bg-primary/20 blur-[250px] rounded-full animate-aurora pointer-events-none opacity-60" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[1000px] h-[1000px] bg-secondary/10 blur-[200px] rounded-full animate-aurora pointer-events-none [animation-delay:6s] opacity-40" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(0,242,255,0.05)_0%,transparent_70%)] pointer-events-none" />
-      
-      {/* Decorative Rings */}
-      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] border border-primary/5 rounded-full animate-[spin_180s_linear_infinite] pointer-events-none" />
-      <div className="absolute bottom-[-15%] left-[-10%] w-[500px] h-[500px] border border-secondary/5 rounded-full animate-[spin_150s_linear_infinite_reverse] pointer-events-none" />
-
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center gap-8"
-      >
-        {/* Top Status Bar */}
-        <motion.div variants={itemVariants} className="w-full flex justify-between items-center glass-panel px-6 py-2 border-white/5 bg-white/[0.01]">
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_var(--primary)]" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">System_Online</span>
-                </div>
-                <div className="h-3 w-[1px] bg-white/10" />
-                <div className="flex items-center gap-2">
-                    <Radio className="w-2.5 h-2.5 text-gray-600" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500">Node: SECTOR_Q-CORE</span>
-                </div>
-            </div>
-            <div className="flex items-center gap-4 text-[9px] font-black text-gray-600 uppercase tracking-widest">
-                <span>Latency: 22ms</span>
-                <span>Uplinks: 1,402</span>
-            </div>
-        </motion.div>
-
-        {/* Hero Section (Compact) */}
-        <div className="flex flex-col items-center gap-6 text-center relative">
-            {/* Logo Emblem */}
-            <motion.div
-                variants={itemVariants}
-                className="relative"
-            >
-                <div className="absolute inset-[-15px] border border-primary/10 rounded-full animate-[spin_25s_linear_infinite]" style={{ borderStyle: 'dashed' }} />
-                <div className="w-24 h-24 bg-background border-2 border-primary flex items-center justify-center p-6 relative z-10"
-                     style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 100%, 0 100%, 0 20%)' }}>
-                    <Swords className="w-full h-full text-primary" />
-                </div>
-            </motion.div>
-
-            <div className="space-y-1">
-                <motion.h1 
-                    variants={itemVariants}
-                    className="text-7xl md:text-[9rem] font-black tracking-tighter uppercase italic leading-none text-white drop-shadow-[0_0_15px_rgba(0,242,255,0.4)]"
-                >
-                    NEAR<span className="text-primary">ENA</span>
-                </motion.h1>
-                <motion.div variants={itemVariants} className="flex items-center justify-center gap-4 opacity-20">
-                    <div className="h-[1px] w-10 bg-white" />
-                    <span className="text-[8px] font-black tracking-[0.8em] uppercase">Tactical Arena Network</span>
-                    <div className="h-[1px] w-10 bg-white" />
-                </motion.div>
-            </div>
-
-            <motion.p 
-                variants={itemVariants}
-                className="text-base md:text-lg text-gray-500 max-w-xl font-medium tracking-tight leading-relaxed font-mono"
-            >
-                &gt; INITIALIZING_OPERATIVE_LINK...<br/>
-                <span className="text-white bg-white/5 px-3 py-0.5 border-l-2 border-primary inline-block mt-1 uppercase text-xs tracking-widest">
-                    Strategize. Stake. Survive.
-                </span>
-            </motion.p>
+    <main className="relative bg-[#06070a] text-[#efe6d2] overflow-x-hidden">
+      <section className="relative h-[100svh] min-h-[640px] w-full overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_72%_28%,#7a5226_0%,#3a2614_32%,#120c08_62%,#06070a_100%)]" />
+        <div className="absolute inset-0">
+          <HeroScene />
         </div>
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(90deg,rgba(6,7,10,0.92)_0%,rgba(6,7,10,0.65)_32%,rgba(6,7,10,0)_62%)] max-md:bg-[linear-gradient(0deg,rgba(6,7,10,0.95)_0%,rgba(6,7,10,0.7)_45%,rgba(6,7,10,0)_75%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-40 pointer-events-none bg-gradient-to-t from-[#06070a] to-transparent" />
 
-        {/* Action Center (Pulled Higher) */}
-        <motion.div variants={itemVariants} className="flex flex-col items-center gap-8 w-full">
-            {!isConnected && (
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Connect Wallet To Initialize</span>
-                <ConnectWallet />
+        <header className="relative z-20 flex items-center justify-between gap-4 px-5 md:px-12 py-6">
+          <a href="#" className={`${display} text-xl md:text-2xl font-bold tracking-[0.18em]`}>
+            NEARENA
+          </a>
+          <nav className="hidden md:flex items-center gap-10 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#efe6d2]/75">
+            <a href="#solo" className="hover:text-[#e2b04a] transition-colors">Vault</a>
+            <a href="#duel" className="hover:text-[#e2b04a] transition-colors">Duel</a>
+            <a href="#token" className="hover:text-[#e2b04a] transition-colors">Token</a>
+          </nav>
+          <ConnectWallet />
+        </header>
+
+        <div className="relative z-10 h-[calc(100%-88px)] flex items-end md:items-center px-5 md:px-12 pb-16 md:pb-0 pointer-events-none">
+          <div className="max-w-3xl pointer-events-auto">
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={0}
+              className={`${display} text-sm md:text-base tracking-[0.45em] text-[#c9a46a]`}
+            >
+              NEARENA · BUILT ON NEAR
+            </motion.p>
+            <motion.h1
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={1}
+              className={`${display} mt-4 text-4xl sm:text-5xl lg:text-[4.4rem] font-bold leading-[1.02] tracking-[0.02em] text-[#f6efe1] drop-shadow-[0_4px_30px_rgba(0,0,0,0.6)]`}
+            >
+              Open the Vault.
+              <br />
+              Beat the Dealer.
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={2}
+              className="mt-6 max-w-xl text-base md:text-lg leading-relaxed text-[#efe6d2]/70"
+            >
+              A high-stakes treasure game on NEAR. Stake BTQ, open the right chest before your chances run out, or face a real
+              rival across the table. Every win settles on-chain.
+            </motion.p>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              custom={3}
+              className="mt-9 flex flex-wrap items-center gap-4"
+            >
+              <button
+                onClick={handleEnter}
+                className={`${display} group flex items-center gap-3 px-8 py-4 bg-[#c9973a] text-[#120c08] text-sm font-bold tracking-[0.25em] uppercase hover:bg-[#e2b04a] transition-colors`}
+              >
+                {isConnected ? "Enter the Arena" : "Connect to Play"}
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+              <a
+                href="#solo"
+                className={`${display} px-8 py-4 border border-[#efe6d2]/30 text-sm font-semibold tracking-[0.25em] uppercase text-[#efe6d2]/85 hover:border-[#e2b04a] hover:text-[#e2b04a] transition-colors`}
+              >
+                How it works
+              </a>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative px-5 md:px-12 pt-10 pb-24">
+        <p className={`${display} text-center text-xs md:text-sm tracking-[0.5em] text-[#c9a46a] mb-10`}>WHAT AWAITS AT THE TABLE</p>
+        <div className="max-w-6xl mx-auto">
+          {ROWS.map((row) => (
+            <motion.article
+              id={row.id}
+              key={row.id}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="group grid grid-cols-[1fr_auto] md:grid-cols-[180px_1fr_120px] items-center gap-6 md:gap-10 py-12 md:py-16 border-t border-[#efe6d2]/10 last:border-b scroll-mt-10"
+            >
+              <div className="hidden md:flex items-center gap-6 text-[10px] font-semibold uppercase tracking-[0.25em]">
+                <span className="text-[#e2b04a]">{row.index}</span>
+                <span className="text-[#efe6d2]/45">{row.label}</span>
               </div>
-            )}
-            <div className="relative group">
-                <div className="absolute -inset-4 border border-primary/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleJoin}
-                  aria-disabled={!isConnected}
-                  className="relative px-12 py-5 bg-primary text-black font-black italic uppercase text-2xl tracking-[0.3em] transition-all overflow-hidden"
-                    style={{ clipPath: 'polygon(5% 0, 100% 0, 95% 100%, 0 100%)' }}
+              <div className="md:text-center">
+                <p className="md:hidden text-[10px] font-semibold uppercase tracking-[0.25em] mb-2">
+                  <span className="text-[#e2b04a] mr-3">{row.index}</span>
+                  <span className="text-[#efe6d2]/45">{row.label}</span>
+                </p>
+                <h2
+                  className={`${display} text-4xl sm:text-5xl lg:text-7xl font-bold tracking-[0.02em] text-[#f6efe1] group-hover:text-[#e2b04a] transition-colors duration-500`}
                 >
-                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-                    <span className="relative z-10 flex items-center gap-3">
-                       INITIATE <ChevronRight className="w-8 h-8 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                </motion.button>
-            </div>
-            
-            {/* System Specs */}
-            <div className="grid grid-cols-4 gap-12 opacity-30">
-                <div className="flex flex-col items-center gap-0.5">
-                    <Fingerprint className="w-4 h-4 mb-0.5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-primary">Biometric</span>
-                    <span className="text-[7px] font-bold">SECURED</span>
-                </div>
-                <div className="flex flex-col items-center gap-0.5">
-                    <Shield className="w-4 h-4 mb-0.5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-secondary">Trust-B</span>
-                    <span className="text-[7px] font-bold">ACTIVE</span>
-                </div>
-                <div className="flex flex-col items-center gap-0.5">
-                    <Lock className="w-4 h-4 mb-0.5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-accent">Vault</span>
-                    <span className="text-[7px] font-bold">LOCKED</span>
-                </div>
-                <div className="flex flex-col items-center gap-0.5">
-                    <Activity className="w-4 h-4 mb-0.5" />
-                    <span className="text-[8px] font-black uppercase tracking-widest text-primary">Pulse</span>
-                    <span className="text-[7px] font-bold">STABLE</span>
-                </div>
-            </div>
-        </motion.div>
+                  {row.title}
+                </h2>
+                <p className="mt-4 md:mx-auto max-w-xl text-sm md:text-base text-[#efe6d2]/55 leading-relaxed">{row.text}</p>
+              </div>
+              <div className="justify-self-end w-20 h-24 md:w-24 md:h-28 flex items-center justify-center text-[#f3d28a] bg-[linear-gradient(160deg,#5a3d17_0%,#2a1b0c_55%,#140d06_100%)] border border-[#8a6a2f] shadow-[inset_0_0_24px_rgba(226,176,74,0.25)] transition-transform duration-500 group-hover:-translate-y-1 group-hover:rotate-[-2deg]">
+                {row.icon}
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      </section>
 
-        {/* Feature Highlights */}
-        <motion.div 
-            variants={itemVariants}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl"
-        >
-          <FeatureCard 
-            icon={<Target className="w-7 h-7 text-primary" />}
-            title="Sovereign Engine"
-            desc="Master the predictive behavior patterns of Solo Sectors. Clear high-density grids to harvest initial BTQ reserves."
-          />
-          <FeatureCard 
-            icon={<Swords className="w-7 h-7 text-secondary" />}
-            title="Tactical Duels"
-            desc="Challenge rival operatives in real-time 1v1 combat. Your shared-grid maneuvers dictate the final system outcome."
-          />
-          <FeatureCard 
-            icon={<Shield className="w-7 h-7 text-accent" />}
-            title="Honor Protocol"
-            desc="Your Operative Tier determines your global standing. Advance to Elite rank to unlock maximum system clearance."
-          />
-        </motion.div>
+      <section className="relative px-5 md:px-12 pb-24">
+        <div className="max-w-6xl mx-auto border border-[#8a6a2f]/60 bg-[radial-gradient(ellipse_at_50%_0%,#3a2614_0%,#0c0907_70%)] px-6 py-16 md:py-20 text-center">
+          <p className={`${display} text-xs tracking-[0.5em] text-[#c9a46a]`}>YOUR SEAT IS WAITING</p>
+          <h2 className={`${display} mt-4 text-4xl md:text-6xl font-bold text-[#f6efe1]`}>Take Your Seat</h2>
+          <p className="mt-5 mx-auto max-w-lg text-[#efe6d2]/60">
+            Connect a NEAR wallet, grab some BTQ, and play your first practice vault for just 5 BTQ.
+          </p>
+          <button
+            onClick={handleEnter}
+            className={`${display} mt-9 inline-flex items-center gap-3 px-9 py-4 bg-[#c9973a] text-[#120c08] text-sm font-bold tracking-[0.25em] uppercase hover:bg-[#e2b04a] transition-colors`}
+          >
+            {isConnected ? "Enter the Arena" : "Connect to Play"}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </section>
 
-        {/* Bottom Technical Readout */}
-        <motion.div variants={itemVariants} className="mt-2 flex flex-col items-center gap-2 opacity-20">
-            <div className="flex items-center gap-6">
-              <span className="text-[8px] font-black uppercase tracking-[0.5em]">Auth: WALLET_ONLY</span>
-                <span className="text-[8px] font-black uppercase tracking-[0.5em]">Ver: 2.5.0_ALPHA</span>
-            </div>
-            <div className="flex items-center gap-4">
-                <div className="w-16 h-[1px] bg-gradient-to-r from-transparent to-white/20" />
-                <Terminal className="w-2.5 h-2.5" />
-                <div className="w-16 h-[1px] bg-gradient-to-l from-transparent to-white/20" />
-            </div>
-        </motion.div>
-      </motion.div>
-
-      {/* Atmospheric Overlays */}
-      <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-      <div className="scanline" />
+      <footer className="px-5 md:px-12 py-8 border-t border-[#efe6d2]/10 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] uppercase tracking-[0.25em] text-[#efe6d2]/40">
+        <span className={`${display} text-sm tracking-[0.2em] text-[#efe6d2]/70`}>NEARENA</span>
+        <span>NEAR Testnet · BTQ token: btq-token.testnet</span>
+      </footer>
     </main>
   );
 }

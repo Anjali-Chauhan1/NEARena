@@ -1,187 +1,120 @@
 "use client";
 
-import { motion, Variants } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { 
-  User, Shield, TrendingUp, History, Star, ArrowLeft, 
-  Coins, Rocket, Target, Activity, Cpu, Zap, 
-  Terminal, BarChart3, Fingerprint, Lock, Wallet as WalletIcon
-} from "lucide-react";
+import { motion, type Variants } from "framer-motion";
+import Link from "next/link";
+import { ArrowLeft, Coins, Crown, History, Lock, Trophy, User } from "lucide-react";
 import { getWalletUser } from "@/lib/user";
 import { Badge } from "@/components/ui/Badge";
 import { DashboardStat, HistoryRow, TacticalSkill, ReputationMeter } from "@/components/profile/ProfileComponents";
 import { AuthGuard } from "@/components/shared/AuthGuard";
 import { useGameStore } from "@/store/useGameStore";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
-
 import WalletPanel from "@/components/wallet/WalletPanel";
 
+const display = "font-[family-name:var(--font-cinzel)]";
+const panel = "bg-[linear-gradient(160deg,#2a1d10_0%,#14100b_55%,#0c0a08_100%)] border border-[#8a6a2f]/50";
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, delay: 0.05 + i * 0.07, ease: [0.16, 1, 0.3, 1] },
+  }),
+};
+
 export default function Profile() {
-  const router = useRouter();
-    const walletUser = getWalletUser();
+  const walletUser = getWalletUser();
   const { solo } = useGameStore();
 
-  const winRatio = solo.history.length > 0 
-    ? ((solo.history.filter(h => h.result === 'SUCCESS').length / solo.history.length) * 100).toFixed(1)
-    : "0.0";
-
-  const reputation = Math.min(Math.floor(solo.score * 0.1) + (solo.unlockedLevel * 100), 1000);
-
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
-  };
+  const wins = solo.history.filter((h) => h.result === "SUCCESS").length;
+  const winRatio = solo.history.length > 0 ? (wins / solo.history.length) * 100 : 0;
+  const reputation = Math.min(Math.floor(solo.score * 0.1) + solo.unlockedLevel * 100, 1000);
+  const isElite = solo.unlockedLevel > 3;
+  const levelsCleared = Math.max(0, Math.min(solo.unlockedLevel - 1, 3));
 
   return (
     <AuthGuard>
-      <main className="min-h-screen max-h-screen bg-[#020203] relative overflow-hidden flex flex-col items-center font-sans">
-        <div className="absolute inset-0 bg-mesh-gradient opacity-10 pointer-events-none" />
-        <div className="scanline" />
+      <main className="min-h-screen bg-[radial-gradient(ellipse_at_70%_0%,#3a2614_0%,#120c08_45%,#06070a_100%)] text-[#efe6d2]">
+        <header className="flex items-center justify-between gap-4 px-5 md:px-12 py-6">
+          <Link href="/lobby" className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#efe6d2]/60 hover:text-[#e2b04a] transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Lobby
+          </Link>
+          <Link href="/" className={`${display} text-xl md:text-2xl font-bold tracking-[0.18em]`}>
+            NEARENA
+          </Link>
+          <ConnectWallet />
+        </header>
 
-        <div className="relative z-10 w-full max-w-7xl px-4 py-6 flex flex-col gap-4 h-full overflow-hidden">
-            
-            {/* Compact Header */}
-            <header className="flex justify-between items-center glass-panel p-4 border-white/5 bg-white/[0.01] rounded-2xl">
-                <motion.button 
-                    whileHover={{ x: -2 }}
-                    onClick={() => router.push("/lobby")}
-                    className="flex items-center gap-2 text-gray-500 hover:text-white transition-all uppercase font-black text-[9px] tracking-[0.2em] group"
-                >
-                    <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" /> 
-                    LOBBY
-                </motion.button>
-                <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end">
-                        <h2 className="text-lg font-black italic tracking-tighter uppercase leading-none">OPERATIVE <span className="neon-text-blue">PROFILE</span></h2>
-                        <span className="text-[7px] text-gray-600 font-black tracking-[0.3em] uppercase">SEC_LVL_0{solo.level}</span>
-                    </div>
-                    <Terminal className="w-3.5 h-3.5 text-primary opacity-50" />
+        <div className="max-w-7xl mx-auto px-5 md:px-12 pb-20 grid gap-6">
+          <motion.section variants={fadeUp} initial="hidden" animate="visible" custom={0} className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-4">
+            <div className="flex items-center gap-5">
+              <div className="w-20 h-24 md:w-24 md:h-28 shrink-0 flex items-center justify-center text-[#f3d28a] bg-[linear-gradient(160deg,#5a3d17_0%,#2a1b0c_55%,#140d06_100%)] border border-[#8a6a2f] shadow-[inset_0_0_24px_rgba(226,176,74,0.25)]">
+                <User className="w-10 h-10" strokeWidth={1.4} />
+              </div>
+              <div className="min-w-0">
+                <p className={`${display} text-xs tracking-[0.45em] text-[#c9a46a]`}>PLAYER PROFILE</p>
+                <h1 className={`${display} mt-2 text-3xl sm:text-4xl md:text-5xl font-bold text-[#f6efe1] break-all`}>{walletUser}</h1>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge label={isElite ? "Elite vault" : "Practice"} icon={isElite ? <Crown className="w-3 h-3" /> : undefined} />
+                  <Badge label={solo.withdrawalUnlocked ? "Withdrawals open" : "Withdrawals locked"} tone="muted" />
                 </div>
-            </header>
+              </div>
+            </div>
+          </motion.section>
 
-            <motion.div 
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 overflow-hidden"
-            >
-                {/* Left Side: Identity & Intelligence */}
-                <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
-                    <motion.div variants={itemVariants} className="glass-panel p-6 border-white/10 relative overflow-hidden group shrink-0">
-                        <div className="relative z-10 flex flex-col items-center gap-4">
-                            <div className="relative w-28 h-28">
-                                <div className="absolute inset-0 rounded-full border border-primary/10 animate-[spin_15s_linear_infinite]" style={{ borderStyle: 'dashed' }} />
-                                <div className="w-full h-full glass-panel neon-border-blue rounded-full flex items-center justify-center bg-primary/5 p-1.5 relative z-10">
-                                    <div className="w-full h-full rounded-full border border-primary/10 flex items-center justify-center p-4 bg-[#0a0a0f] overflow-hidden">
-                                        <User className="w-full h-full text-white/80" />
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="text-center space-y-0.5">
-                                <h3 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-none">{walletUser}</h3>
-                                <p className="text-[8px] text-primary font-black uppercase tracking-[0.3em]">Unit Active</p>
-                            </div>
-                            
-                            <div className="flex gap-2 w-full">
-                                <Badge label={solo.unlockedLevel > 5 ? "Elite" : "Vet"} color="blue" />
-                                <Badge label="Loyal" color="purple" />
-                            </div>
-                        </div>
-                    </motion.div>
+          <motion.section variants={fadeUp} initial="hidden" animate="visible" custom={1} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <DashboardStat icon={Coins} label="Balance" value={`${solo.score} BTQ`} />
+            <DashboardStat icon={Crown} label="Rank" value={isElite ? "Elite" : "Practice"} />
+            <DashboardStat icon={Trophy} label="Win rate" value={`${winRatio.toFixed(0)}%`} />
+            <DashboardStat icon={Lock} label="Withdraw" value={solo.withdrawalUnlocked ? "Open" : "Locked"} />
+          </motion.section>
 
-                    <motion.div variants={itemVariants} className="glass-panel p-6 border-white/5 bg-white/[0.01] flex-1 overflow-hidden flex flex-col">
-                        <h4 className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                            <Activity className="w-3.5 h-3.5 text-primary" /> Intelligence
-                        </h4>
-                        
-                        <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            <ReputationMeter value={reputation} />
-                            <div className="space-y-4 pt-2">
-                                <TacticalSkill label="Win Ratio" level={Math.floor(Number(winRatio) / 10)} color="primary" />
-                                <TacticalSkill label="Sector Clearance" level={Math.min(solo.unlockedLevel, 10)} color="secondary" />
-                                <TacticalSkill label="Risk Level" level={solo.stake > 100 ? 8 : 4} color="accent" />
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <motion.section variants={fadeUp} initial="hidden" animate="visible" custom={2} className={`lg:col-span-5 ${panel} p-6 md:p-7 grid gap-7 content-start`}>
+              <ReputationMeter value={reputation} />
+              <div className="grid gap-5">
+                <TacticalSkill label="Win rate" level={Math.round(winRatio / 10)} />
+                <TacticalSkill label="Practice vaults cleared" level={Math.round((levelsCleared / 3) * 10)} color="#3fae5a" />
+                <TacticalSkill label="Risk appetite" level={solo.stake > 100 ? 8 : 4} color="#c0392b" />
+              </div>
+            </motion.section>
 
-                {/* Right Side: Command Dashboard */}
-                <div className="lg:col-span-8 flex flex-col gap-4 overflow-hidden">
-                    <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
-                        <DashboardStat icon={Coins} label="BTQ" value={`${solo.score} BTQ`} />
-                        <DashboardStat icon={Target} label="Tier" value={solo.unlockedLevel > 3 ? "Elite" : "Scout"} />
-                        <DashboardStat icon={Lock} label="Access" value={solo.withdrawalUnlocked ? "FULL" : "REST"} />
-                        <DashboardStat icon={Zap} label="System" value="SYNC" />
-                    </motion.div>
+            <motion.section variants={fadeUp} initial="hidden" animate="visible" custom={3} className={`lg:col-span-7 ${panel} flex flex-col min-h-[320px]`}>
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#efe6d2]/10">
+                <h2 className={`${display} flex items-center gap-3 text-xl font-bold text-[#f6efe1]`}>
+                  <History className="w-5 h-5 text-[#e2b04a]" /> Game history
+                </h2>
+                <span className="text-[10px] uppercase tracking-[0.25em] text-[#efe6d2]/40">{solo.history.length} rounds</span>
+              </div>
+              <div className="flex-1 overflow-y-auto max-h-[420px]">
+                {solo.history.length > 0 ? (
+                  solo.history.map((round, i) => (
+                    <HistoryRow
+                      key={i}
+                      won={round.result === "SUCCESS"}
+                      reward={`${round.reward} BTQ`}
+                      title={round.level > 3 ? "Elite vault" : `Practice vault ${round.level}`}
+                      date={round.date}
+                    />
+                  ))
+                ) : (
+                  <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-2 text-center px-6">
+                    <p className={`${display} text-lg text-[#efe6d2]/70`}>No rounds yet</p>
+                    <p className="text-sm text-[#efe6d2]/45">Your solo vault results will show up here.</p>
+                  </div>
+                )}
+              </div>
+            </motion.section>
+          </div>
 
-                    <motion.div variants={itemVariants} className="glass-panel p-6 border-white/5 bg-white/[0.01] relative overflow-hidden shrink-0">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <span className="text-5xl font-black italic uppercase tracking-tighter text-white">LVL <span className="neon-text-purple">{solo.unlockedLevel - 1}</span></span>
-                                <div className="flex flex-col">
-                                    <span className="text-[8px] text-gray-500 font-bold uppercase tracking-[0.3em]">Current Rank</span>
-                                    <span className="text-sm font-black italic text-secondary uppercase italic">
-                                        {solo.unlockedLevel > 5 ? 'Elite Guard' : 'Sector Scout'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-sm font-black text-white italic font-mono">
-                                    {solo.score} <span className="text-primary">/</span> { (solo.unlockedLevel) * 200 }
-                                </span>
-                                <div className="h-1 w-32 bg-white/5 rounded-full overflow-hidden mt-1.5 p-0.5">
-                                    <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${Math.min((solo.score / ((solo.unlockedLevel) * 200)) * 100, 100)}%` }}
-                                        className="h-full bg-primary rounded-full"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    <motion.div variants={itemVariants} className="glass-panel p-6 border-white/5 flex-1 overflow-hidden flex flex-col">
-                        <h4 className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] mb-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2"><History className="w-3.5 h-3.5 text-primary" /> Mission Log</div>
-                          <span className="text-[7px] opacity-40">AUTO_SYNC_ENABLED</span>
-                        </h4>
-                        
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                          {solo.history.length > 0 ? (
-                            solo.history.map((op, i) => (
-                                <HistoryRow 
-                                    key={i}
-                              result={op.result === 'SUCCESS' ? 'VIC' : 'LOSS'}
-                              reward={`${op.reward} BTQ`}
-                                    mode={`Sector ${op.level} Scan`}
-                                    date={op.date}
-                                    color={op.result === 'SUCCESS' ? 'green' : 'red'}
-                                />
-                            ))
-                          ) : (
-                            <div className="h-full flex flex-col items-center justify-center opacity-20 py-8">
-                                <BarChart3 className="w-8 h-8 mb-2" />
-                                <span className="text-[8px] font-black uppercase tracking-widest">No Logs</span>
-                            </div>
-                          )}
-                        </div>
-                    </motion.div>
-
-                    {/* Wallet & BTQ Purchase Section */}
-                    <motion.div variants={itemVariants} className="glass-panel p-6 border-primary/30 bg-primary/5 col-span-full">
-                        <WalletPanel />
-                    </motion.div>
-                </div>
-            </motion.div>
+          <motion.section variants={fadeUp} initial="hidden" animate="visible" custom={4} className="grid gap-3 max-w-xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em]">
+              <span className="text-[#e2b04a] mr-3">/</span>
+              <span className="text-[#efe6d2]/45">Your purse</span>
+            </p>
+            <WalletPanel />
+          </motion.section>
         </div>
       </main>
     </AuthGuard>

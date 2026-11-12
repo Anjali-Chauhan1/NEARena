@@ -1,34 +1,15 @@
 interface BadgeProps {
     icon?: React.ReactNode;
     label: string;
-    color: 'blue' | 'purple' | 'pink' | 'primary' | 'secondary' | 'accent' | 'warning';
+    tone?: "gold" | "muted";
 }
 
-export function Badge({ icon, label, color }: BadgeProps) {
-    const colorClasses: Record<string, string> = {
-        blue: 'border-primary text-primary bg-primary/20 shadow-[0_0_8px_rgba(0,242,255,0.2)]',
-        primary: 'border-primary text-primary bg-primary/20 shadow-[0_0_8px_rgba(0,242,255,0.2)]',
-        purple: 'border-secondary text-secondary bg-secondary/20 shadow-[0_0_8px_rgba(188,19,254,0.2)]',
-        secondary: 'border-secondary text-secondary bg-secondary/20 shadow-[0_0_8px_rgba(188,19,254,0.2)]',
-        pink: 'border-accent text-accent bg-accent/20 shadow-[0_0_8px_rgba(255,0,60,0.2)]',
-        accent: 'border-accent text-accent bg-accent/20 shadow-[0_0_8px_rgba(255,0,60,0.2)]',
-        warning: 'border-warning text-warning bg-warning/20 shadow-[0_0_8px_rgba(255,184,0,0.2)]',
-    };
+export function Badge({ icon, label, tone = "gold" }: BadgeProps) {
+    const toneClass = tone === "gold" ? "border-[#c9973a] text-[#e2b04a] bg-[#c9973a]/10" : "border-[#efe6d2]/25 text-[#efe6d2]/70";
 
-    const colorClass = colorClasses[color] || colorClasses.blue;
-        
     return (
-        <div 
-          className={`
-            px-4 py-1 border-[1px] text-[10px] font-black uppercase tracking-widest 
-            flex items-center gap-2 font-mono transition-all duration-300
-            ${colorClass}
-          `}
-          style={{
-            clipPath: 'polygon(15% 0, 100% 0, 100% 100%, 0 100%, 0 35%)'
-          }}
-        >
-            {icon && <span className="opacity-80 scale-90">{icon}</span>}
+        <div className={`px-3 py-1 border text-[10px] font-semibold uppercase tracking-[0.25em] flex items-center gap-2 ${toneClass}`}>
+            {icon && <span className="opacity-80">{icon}</span>}
             <span>{label}</span>
         </div>
     );

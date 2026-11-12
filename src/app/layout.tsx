@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Cinzel, Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import NearWalletProvider from "@/components/providers/NearWalletProvider";
 
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
+});
+
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "900"],
+  variable: "--font-cinzel",
 });
 
 const inter = Inter({
@@ -15,7 +21,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "NEARena | Real-time Arena Game",
-  description: "A behavior-driven, high-retention real-time strategy arena.",
+  description: "Stake BTQ, crack the vault and beat the dealer. A treasure duel on NEAR.",
 };
 
 export default function RootLayout({
@@ -24,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${outfit.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${outfit.variable} ${inter.variable} ${cinzel.variable}`} suppressHydrationWarning>
       <body className="bg-background text-foreground font-sans min-h-screen">
         <NearWalletProvider>
           {children}
