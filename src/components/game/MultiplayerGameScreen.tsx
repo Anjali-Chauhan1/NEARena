@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { Heart, Crosshair, ShieldPlus, SkipForward, Users, Bomb, Search } from "lucide-react";
 import { useSocket } from "@/hooks/useSocket";
@@ -10,6 +11,8 @@ import { applyDuelSettlement, getWalletUser, hasDuelPayoutClaimed, hasDuelStakeP
 import { useGameStore } from "@/store/useGameStore";
 import { useWriteContract } from "@/lib/near/hooks";
 import { btqToYocto } from "@/lib/near/format";
+
+const DuelArena3D = dynamic(() => import("@/components/game/DuelArena3D"), { ssr: false });
 
 type ChestItem = "gun" | "health" | "skip" | "double_kill" | "magnifier" | "empty";
 
@@ -41,11 +44,11 @@ interface DuelState {
 }
 
 const itemToIcon: Record<ChestItem, React.ReactNode> = {
-  gun: <Crosshair className="w-6 h-6 text-red-400" />,
-  health: <ShieldPlus className="w-6 h-6 text-emerald-400" />,
-  skip: <SkipForward className="w-6 h-6 text-amber-300" />,
-  double_kill: <Bomb className="w-6 h-6 text-fuchsia-400" />,
-  magnifier: <Search className="w-6 h-6 text-cyan-300" />,
+  gun: <Crosshair className="w-6 h-6 text-[#e74c3c]" />,
+  health: <ShieldPlus className="w-6 h-6 text-[#3fae5a]" />,
+  skip: <SkipForward className="w-6 h-6 text-[#d9a441]" />,
+  double_kill: <Bomb className="w-6 h-6 text-[#a569bd]" />,
+  magnifier: <Search className="w-6 h-6 text-[#5dade2]" />,
   empty: <span className="text-xs text-white/30">EMPTY</span>,
 };
 
@@ -551,470 +554,481 @@ export function MultiplayerGameScreen() {
     });
   };
 
-  if (phase !== "in_game") {
-    return (
-      <main className="min-h-screen bg-[#020203] text-white font-mono cyber-grid relative overflow-hidden overflow-y-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[100] bg-[length:100%_2px,3px_100%]" />
-        <div className="relative z-10 max-w-4xl mx-auto px-5 py-12 flex flex-col gap-6">
-          <header className="border border-primary/30 bg-black/60 backdrop-blur-md p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[9px] tracking-[0.2em] text-primary font-semibold uppercase">DUEL MULTIPLAYER</p>
-              <h1 className="text-2xl font-black uppercase tracking-tight">Join a Match</h1>
-              <p className="text-[11px] text-white/50 mt-1">{isConnected ? "Real-time via socket" : "Connecting to server..."}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-extrabold text-primary">{statusText}</p>
-            </div>
-          </header>
+  type DuelFx = { key: number; kind: "hit" | "strike" | "heal" | null; item?: ChestItem };
+  const [fx, setFx] = useState<DuelFx>({ key: 0, kind: null });
+  const [shakeKey, setShakeKey] = useState(0);
+  const prevDuelRef = useRef<DuelState | null>(null);
 
-          {phase === "stake" && (
-            <section className="border border-white/12 bg-black/45 p-6 grid gap-4">
-              <div className="border border-primary/25 bg-black/50 p-5">
-                <p className="text-[10px] uppercase tracking-widest text-white/50">Stake Amount</p>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <div className="flex items-baseline gap-3">
-                    {stakeLocked ? (
-                      <div className="w-32 bg-transparent text-4xl font-black tracking-tight text-primary">
-                        {stakeAmount}
-                      </div>
-                    ) : (
-                      <input
-                        value={Number.isFinite(stakeAmount) ? stakeAmount : STAKE_MIN}
-                        onChange={(e) => {
-                          if (stakeLocked) return;
-                          const raw = e.target.value.replace(/\D/g, "");
-                          const next = raw ? parseInt(raw, 10) : STAKE_MIN;
-                          setStakeAmount(clampStake(next));
-                        }}
-                        inputMode="numeric"
-                        className="w-32 bg-transparent text-4xl font-black tracking-tight text-primary outline-none border-b border-primary/40"
-                        disabled={stakeLocked}
-                      />
-                    )}
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/50">BTQ</span>
-                  </div>
+  useEffect(() => {
+    const prev = prevDuelRef.current;
+    prevDuelRef.current = duelState;
+    if (!prev || !duelState || !myId || prev.roomId !== duelState.roomId) return;
 
-                  {!stakeLocked && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => !stakeLocked && setStakeAmount((v) => clampStake(v - STAKE_STEP))}
-                        className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10"
-                        disabled={stakeLocked}
-                      >
-                        -{STAKE_STEP}
-                      </button>
-                      <button
-                        onClick={() => !stakeLocked && setStakeAmount((v) => clampStake(v + STAKE_STEP))}
-                        className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10"
-                        disabled={stakeLocked}
-                      >
-                        +{STAKE_STEP}
-                      </button>
-                    </div>
-                  )}
+    const opened = duelState.tiles.find(
+      (t) => t.revealed && !prev.tiles.find((p) => p.x === t.x && p.y === t.y)?.revealed
+    );
+    const oppId = duelState.players.find((p) => p.id !== myId)?.id;
+    const myDelta = (duelState.lives[myId] ?? 0) - (prev.lives[myId] ?? 0);
+    const oppDelta = oppId ? (duelState.lives[oppId] ?? 0) - (prev.lives[oppId] ?? 0) : 0;
+    const kind = myDelta < 0 ? "hit" : oppDelta < 0 ? "strike" : myDelta > 0 || oppDelta > 0 ? "heal" : null;
+    if (!opened && !kind) return;
+
+    setFx((f) => ({ key: f.key + 1, kind, item: opened?.item }));
+    if (kind === "hit" || kind === "strike") setShakeKey((k) => k + 1);
+  }, [duelState, myId]);
+
+  const resetToMenu = () => {
+    setPhase("menu");
+    setStatusText("Choose how to play");
+    setPendingJoinIntent(null);
+    setJoinError(null);
+    setAwaitingStakeConfirm(false);
+    setStakeLocked(false);
+  };
+
+  const quickMatch = () => {
+    if (!socket || !isConnected) return;
+    socket.timeout(2000).emit("check_random_available", {}, (err: unknown, res?: { available: boolean; betAmount?: number }) => {
+      if (!err && res?.available) {
+        setPendingJoinIntent({ type: "random" });
+        joinRandom(res.betAmount || STAKE_MIN);
+      } else {
+        startStakeFor({ type: "random" });
+      }
+    });
+  };
+
+  const joinWithCode = () => {
+    const code = joinCodeInput.trim().toUpperCase();
+    if (!code) {
+      setJoinError("Enter a room code");
+      return;
+    }
+    // The server reads the room's stake and replies with a locked stake confirmation.
+    setPendingJoinIntent({ type: "code", code });
+    joinByCode(code, STAKE_MIN);
+  };
+
+  const preGame = phase !== "in_game";
+  const maxLives = duelState?.maxLives ?? 5;
+  const myLives = me ? (duelState?.lives[me.id] ?? maxLives) : maxLives;
+  const oppLives = opponent ? (duelState?.lives[opponent.id] ?? maxLives) : maxLives;
+  const playing = duelState?.status === "playing";
+  const pot = duelState?.totalPot ?? selectedStake * 2;
+
+  const plate =
+    "px-5 py-4 text-xs font-black uppercase tracking-[0.22em] transition-all disabled:opacity-40 disabled:cursor-not-allowed [clip-path:polygon(14px_0,100%_0,calc(100%-14px)_100%,0_100%)]";
+  const plateGold = `${plate} bg-[#c9973a] text-black hover:bg-[#ddb04f] active:translate-y-px`;
+  const plateDark = `${plate} bg-[#2a241b] text-[#e8d9b5] hover:bg-[#3a3225]`;
+
+  const lifePips = (lives: number, tone: string) => (
+    <div className="flex gap-1">
+      {Array.from({ length: maxLives }).map((_, i) => (
+        <span
+          key={i}
+          className={`h-2.5 w-5 -skew-x-12 transition-all duration-300 ${i < lives ? tone : "bg-white/10"}`}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <main className="relative h-screen w-full overflow-hidden bg-[#040506] text-white select-none">
+      <div className="absolute inset-0">
+        <DuelArena3D
+          gridSize={duelState?.gridSize || 6}
+          tiles={sortedTiles}
+          peeked={peekedTiles}
+          canAct={!preGame && isMyTurn && Boolean(playing)}
+          peekMode={isPeekMode}
+          onTile={onTileClick}
+          myLives={myLives}
+          oppLives={oppLives}
+          maxLives={maxLives}
+          hasOpponent={Boolean(opponent)}
+          opponentTurn={Boolean(playing && !isMyTurn)}
+          shakeKey={shakeKey}
+          idle={preGame}
+        />
+      </div>
+
+      {preGame ? (
+        <div className="absolute inset-0 overflow-y-auto flex items-center justify-center p-4 bg-black/35">
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="w-full max-w-lg bg-[#15120e] border-2 border-[#8a6a2f]"
+          >
+            <div className="h-1.5 bg-[#8a6a2f]" />
+            <div className="p-6 md:p-8 grid gap-5">
+              <header className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black tracking-[0.35em] text-amber-400 uppercase">Chest Duel · 1v1</p>
+                  <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none mt-1">
+                    {phase === "stake" ? "Place Stake" : phase === "waiting" ? "Table Open" : "Take a Seat"}
+                  </h1>
                 </div>
-                {!stakeLocked && <p className="text-[11px] text-white/50 mt-2">Min {STAKE_MIN} • Max {STAKE_MAX}</p>}
-                {joinError && <p className="text-xs text-red-400 mt-2">{joinError}</p>}
-                {stakeError && <p className="text-xs text-red-400 mt-2">{stakeError}</p>}
-              </div>
+                <div className="flex items-center gap-2 pb-1">
+                  <span className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-400 animate-pulse" : "bg-red-500"}`} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{statusText}</span>
+                </div>
+              </header>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setPhase("menu");
-                    setStatusText("Choose how to play");
-                    setPendingJoinIntent(null);
-                    setJoinError(null);
-                    setAwaitingStakeConfirm(false);
-                    setStakeLocked(false);
-                  }}
-                  disabled={isJoining}
-                  className="flex-1 px-5 py-4 text-xs font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={confirmStakeAndJoin}
-                  disabled={!isConnected || isJoining || isStakePending}
-                  className="flex-[2] px-5 py-4 text-xs font-black uppercase tracking-widest border border-primary/40 bg-primary/10 hover:bg-primary/15 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isStakePending ? "Locking Stake..." : "Confirm & Continue"}
-                </button>
-              </div>
-
-              {stakeLocked ? (
-                <p className="text-[11px] text-white/45">
-                  The room creator has set the stake amount to {stakeAmount} BTQ.
-                </p>
-              ) : (
-                <p className="text-[11px] text-white/45">
-                  Tip: If you stake {STAKE_MIN}, you can increase up to {STAKE_MAX}.
-                </p>
+              {phase === "stake" && (
+                <>
+                  <div className="bg-[#0e0c09] border border-[#5c4a26] p-5">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/45 font-black">Stake Amount</p>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <div className="flex items-baseline gap-3">
+                        {stakeLocked ? (
+                          <span className="text-6xl font-black italic tracking-tighter text-amber-300">{stakeAmount}</span>
+                        ) : (
+                          <input
+                            value={Number.isFinite(stakeAmount) ? stakeAmount : STAKE_MIN}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, "");
+                              setStakeAmount(clampStake(raw ? parseInt(raw, 10) : STAKE_MIN));
+                            }}
+                            inputMode="numeric"
+                            className="w-36 bg-transparent text-6xl font-black italic tracking-tighter text-amber-300 outline-none border-b-2 border-amber-400/40 focus:border-amber-300"
+                          />
+                        )}
+                        <span className="text-xs font-black uppercase tracking-widest text-white/50">BTQ</span>
+                      </div>
+                      {!stakeLocked && (
+                        <div className="flex gap-2">
+                          <button onClick={() => setStakeAmount((v) => clampStake(v - STAKE_STEP))} className={`${plateDark} !px-4 !py-3`}>
+                            -{STAKE_STEP}
+                          </button>
+                          <button onClick={() => setStakeAmount((v) => clampStake(v + STAKE_STEP))} className={`${plateDark} !px-4 !py-3`}>
+                            +{STAKE_STEP}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-white/50 mt-3">
+                      {stakeLocked
+                        ? `The room creator set the stake to ${stakeAmount} BTQ.`
+                        : `Min ${STAKE_MIN} · Max ${STAKE_MAX} · Winner takes the whole pot`}
+                    </p>
+                    {joinError && <p className="text-xs text-red-400 mt-2">{joinError}</p>}
+                    {stakeError && <p className="text-xs text-red-400 mt-2 break-words">{stakeError}</p>}
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={resetToMenu} disabled={isJoining} className={`${plateDark} flex-1`}>
+                      Back
+                    </button>
+                    <button onClick={confirmStakeAndJoin} disabled={!isConnected || isJoining || isStakePending} className={`${plateGold} flex-[2]`}>
+                      {isStakePending ? "Locking Stake..." : "Confirm Stake"}
+                    </button>
+                  </div>
+                </>
               )}
-            </section>
-          )}
 
-          {phase !== "stake" && (
-          <section className="border border-white/12 bg-black/45 p-6 grid gap-4">
-            {phase === "waiting" && (
-              <div className="border border-primary/25 bg-black/50 p-5">
-                <p className="text-[10px] uppercase tracking-widest text-white/50">Room</p>
-                {roomCode ? (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-3xl font-black tracking-[0.2em] text-primary">{roomCode}</p>
-                      <button
-                        onClick={copyRoomCode}
-                        className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10"
-                      >
+              {phase === "waiting" && (
+                <div className="bg-[#0e0c09] border border-[#5c4a26] p-5">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/45 font-black">{roomCode ? "Room Code" : "Matchmaking"}</p>
+                  {roomCode ? (
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <p className="text-5xl font-black tracking-[0.25em] text-[#e2b04a]">{roomCode}</p>
+                      <button onClick={copyRoomCode} className={`${plateDark} !px-4 !py-3`}>
                         {didCopyCode ? "Copied" : "Copy"}
                       </button>
                     </div>
-                    <p className="text-[11px] text-white/50 mt-2">Share this code to invite a friend.</p>
-                    <p className="text-[11px] text-white/60 mt-1">Stake: {selectedStake} BTQ</p>
-                  </div>
-                ) : (
-                  <div className="mt-2">
-                    <p className="text-[11px] text-white/50">Random matchmaking…</p>
-                    <p className="text-[11px] text-white/60 mt-1">Stake: {selectedStake} BTQ</p>
-                  </div>
-                )}
-                <p className="text-[11px] text-white/60 mt-3">Players in room: {Math.max(1, waitingCount)}/2</p>
-                {joinError && <p className="text-xs text-red-400 mt-2">{joinError}</p>}
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                if (!socket || !isConnected) return;
-                socket.timeout(2000).emit("check_random_available", {}, (err: unknown, res?: { available: boolean; betAmount?: number }) => {
-                  if (err || !res) {
-                    startStakeFor({ type: "random" });
-                    return;
-                  }
-                  if (res.available) {
-                    setPendingJoinIntent({ type: "random" });
-                    joinRandom(res.betAmount || STAKE_MIN);
-                  } else {
-                    startStakeFor({ type: "random" });
-                  }
-                });
-              }}
-              disabled={!isConnected || isJoining}
-              className="w-full px-5 py-4 text-xs font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Join Random Room
-            </button>
-
-            <button
-              onClick={() => startStakeFor({ type: "create" })}
-              disabled={!isConnected || isJoining}
-              className="w-full px-5 py-4 text-xs font-black uppercase tracking-widest border border-primary/40 bg-primary/10 hover:bg-primary/15 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Create Room (Get Code)
-            </button>
-
-            <div className="border-t border-white/10 pt-4 grid gap-2">
-              <p className="text-[10px] uppercase tracking-widest text-white/50">Enter Code</p>
-              <div className="flex gap-2">
-                <input
-                  value={joinCodeInput}
-                  onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
-                  placeholder="ABC123"
-                  className="flex-1 bg-black/40 border border-white/15 px-4 py-3 text-sm outline-none"
-                />
-                <button
-                  onClick={() => {
-                    const code = joinCodeInput.trim().toUpperCase();
-                    if (!code) {
-                      setJoinError("Enter a room code");
-                      return;
-                    }
-                    // Removed startStakeFor so we skip the adjustment screen and join directly.
-                    // Backend will read the room's stake and immediately respond with a stake confirmation lock.
-                    setPendingJoinIntent({ type: "code", code });
-                    joinByCode(code, STAKE_MIN);
-                  }}
-                  disabled={!isConnected || isJoining}
-                  className="px-5 py-3 text-xs font-black uppercase tracking-widest border border-white/20 bg-white/5 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Join
-                </button>
-              </div>
-              {joinError && <p className="text-xs text-red-400">{joinError}</p>}
-            </div>
-          </section>
-          )}
-
-          {phase !== "stake" && (
-            <p className="text-[11px] text-white/45">
-              Tip: Use “Create Room” to get a code and share it with a friend.
-            </p>
-          )}
-        </div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="min-h-screen bg-[#020203] text-white font-mono cyber-grid relative overflow-hidden overflow-y-hidden">
-      <div className="absolute inset-0 pointer-events-none opacity-[0.05] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-[100] bg-[length:100%_2px,3px_100%]" />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-5 py-4 md:py-6 flex flex-col gap-4 md:gap-6">
-        <header className="border border-primary/30 bg-black/60 backdrop-blur-md p-2 md:p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <p className="text-[9px] tracking-[0.2em] text-primary font-semibold uppercase">REALTIME DUEL</p>
-            <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight">Shared Chest Grid</h1>
-            <p id="match-id-info" className="text-[11px] text-white/50 mt-1">{roomCode ? `Code: ${roomCode}` : (roomId ? `Match: ${roomId}` : 'Match: TBD')}</p>
-          </div>
-
-          <div className="text-right">
-              <p id="stats-info" className="text-base md:text-lg font-extrabold text-primary">{statusText}</p>
-              <div className="mt-1 text-[11px] text-white/60">
-                <span className="inline-block mr-4">Bet: {duelState?.betAmount ?? selectedStake} BTQ</span>
-                <span className="inline-block mr-4">Pot: {duelState?.totalPot ?? selectedStake * 2} BTQ</span>
-                <span className="inline-block">Peek: {myPeekCharges}</span>
-              </div>
-          </div>
-        </header>
-
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start">
-          <div className="md:col-span-1 flex flex-col gap-4">
-            {[me, opponent].map((player, idx) => {
-              const maxLives = duelState?.maxLives ?? 5;
-              const lives = player ? (duelState?.lives[player.id] ?? maxLives) : maxLives;
-              const isTurnForPlayer = Boolean(
-                duelState?.status === "playing" &&
-                  duelState?.turnPlayerId &&
-                  player?.id &&
-                  player.id === duelState.turnPlayerId
-              );
-              return (
-                <div
-                  key={player?.id || idx}
-                  className={`relative overflow-hidden border p-3 transition-all duration-300 ${
-                    isTurnForPlayer
-                      ? "border-primary bg-primary/15 shadow-[0_0_40px_rgba(0,242,255,0.22)] ring-1 ring-primary/40 scale-[1.01]"
-                      : "border-white/12 bg-black/50"
-                  }`}
-                >
-                  {isTurnForPlayer && (
-                    <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse" />
+                  ) : (
+                    <p className="mt-2 text-lg font-black italic uppercase text-[#e2b04a] animate-pulse">Searching for a rival…</p>
                   )}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[9px] tracking-[0.25em] text-white/40 uppercase">{idx === 0 ? "You" : "Opponent"}</p>
-                      <p className={`text-lg md:text-xl font-black uppercase tracking-tight ${isTurnForPlayer ? "text-primary" : "text-white"}`}>
-                        {player?.name || "Waiting..."}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {isTurnForPlayer ? (
-                        <span className="px-2 py-1 text-[9px] font-black uppercase tracking-[0.25em] bg-primary text-black">
-                          Your Turn
-                        </span>
-                      ) : (
-                        <Users className="w-5 h-5 text-primary/80" />
-                      )}
-                    </div>
+                  <div className="mt-4 flex items-center justify-between text-[11px] uppercase tracking-widest text-white/60 font-black">
+                    <span>Stake {selectedStake} BTQ</span>
+                    <span>Seats {Math.max(1, waitingCount)}/2</span>
                   </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    {Array.from({ length: maxLives }).map((_, i) => (
-                      <Heart
-                        key={i}
-                        className={`w-5 h-5 ${i < lives ? "text-red-500 fill-red-500/80" : "text-white/20"}`}
+                  <div className="mt-2 h-1 bg-white/10 overflow-hidden">
+                    <motion.div
+                      className="h-full w-1/3 bg-[#c9973a]"
+                      animate={{ x: ["-100%", "300%"] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
+                    />
+                  </div>
+                  {joinError && <p className="text-xs text-red-400 mt-2">{joinError}</p>}
+                </div>
+              )}
+
+              {phase !== "stake" && (
+                <>
+                  <button onClick={quickMatch} disabled={!isConnected || isJoining} className={`${plateGold} w-full !py-5 !text-sm`}>
+                    Quick Match
+                  </button>
+                  <button onClick={() => startStakeFor({ type: "create" })} disabled={!isConnected || isJoining} className={`${plateDark} w-full`}>
+                    Create Private Room
+                  </button>
+                  <div className="grid gap-2 pt-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/45 font-black">Have a code?</p>
+                    <div className="flex gap-2">
+                      <input
+                        value={joinCodeInput}
+                        onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                        placeholder="ABC123"
+                        className="flex-1 min-w-0 bg-[#0e0c09] border border-[#5c4a26] px-4 py-3 text-sm font-black tracking-[0.3em] outline-none focus:border-[#c9973a]"
                       />
-                    ))}
+                      <button onClick={joinWithCode} disabled={!isConnected || isJoining} className={`${plateDark} !py-3`}>
+                        Join
+                      </button>
+                    </div>
+                    {phase === "menu" && joinError && <p className="text-xs text-red-400">{joinError}</p>}
                   </div>
-                </div>
-              );
-            })}
-
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-white/60 uppercase tracking-widest">Lives: {duelState?.maxLives ?? 5}</p>
-              <button
-                id="btn-magnifier"
-                onClick={() => setIsPeekMode((prev) => !prev)}
-                disabled={!isMyTurn || myPeekCharges <= 0 || duelState?.status !== "playing"}
-                className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                  isPeekMode
-                    ? "border-cyan-300 text-cyan-300 bg-cyan-300/10"
-                    : "border-white/25 text-white/80"
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
-              >
-                {isPeekMode ? "Peek ON" : "Use Magnifier"}
-              </button>
-            </div>
-
-            <div id="chest-legend" className="grid grid-cols-1 gap-2 text-xs">
-              {(["gun", "health", "skip", "double_kill", "magnifier"] as ChestItem[]).map((item) => (
-                <div key={item} className="border border-white/12 bg-black/40 p-2 flex items-center gap-2">
-                  <div className="w-5 h-5 flex items-center justify-center">{itemToIcon[item]}</div>
-                  <p className="text-white/80 text-xs">{itemToLabel[item]}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <section id="arena-grid" className="border border-primary/25 bg-black/55 p-2 md:p-4">
-              <div className="grid gap-2 md:gap-3" style={{ gridTemplateColumns: `repeat(${duelState?.gridSize || 6}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${duelState?.gridSize || 6}, minmax(0, 1fr))`, height: 'min(72vh, calc(100vh - 170px))' }}>
-                {(sortedTiles.length > 0 ? sortedTiles : Array.from({ length: 36 }).map((_, i) => ({
-                  x: i % 6,
-                  y: Math.floor(i / 6),
-                  revealed: false,
-                  item: undefined,
-                }))).map((tile) => (
-                  <motion.button
-                    key={`${tile.x}-${tile.y}`}
-                    whileHover={!tile.revealed && isMyTurn ? { scale: 1.03 } : {}}
-                    whileTap={!tile.revealed && isMyTurn ? { scale: 0.98 } : {}}
-                    onClick={() => onTileClick(tile.x, tile.y, tile.revealed)}
-                    disabled={!isMyTurn || tile.revealed || duelState?.status !== "playing"}
-                    className={`w-full h-full border text-sm md:text-base font-bold tracking-wide transition-all flex items-center justify-center ${
-                      tile.revealed
-                        ? "border-primary/50 bg-primary/10"
-                        : peekedTiles[`${tile.x}-${tile.y}`]
-                          ? "border-cyan-300/70 bg-cyan-300/10"
-                        : isMyTurn
-                          ? "border-white/20 bg-white/5 hover:border-primary/60"
-                          : "border-white/10 bg-white/[0.03]"
-                    }`}
-                  >
-                    {tile.revealed && tile.item
-                      ? itemToIcon[tile.item]
-                      : peekedTiles[`${tile.x}-${tile.y}`]
-                        ? (
-                          <div className="flex flex-col items-center gap-1 text-[10px]">
-                            {itemToIcon[peekedTiles[`${tile.x}-${tile.y}`]]}
-                            <span className="text-[9px] text-cyan-300 uppercase">Scanned</span>
-                          </div>
-                        )
-                        : <span className="text-white/60">CHEST</span>}
-                  </motion.button>
-                ))}
-              </div>
-            </section>
-          </div>
-        </section>
-
-        {/* Multiplayer Tour */}
-        {showTour && (
-          <TutorialTour
-            onComplete={handleTourComplete}
-            steps={[
-              {
-                title: "Welcome to Multiplayer",
-                content: "This short tour will guide you through the shared chest duel interface and basic actions.",
-                icon: <Users className="w-6 h-6 text-primary" />, 
-                position: "center"
-              },
-              {
-                targetId: "match-id-info",
-                title: "Match ID",
-                content: "This is your match identifier — share it with friends to join the same duel.",
-                icon: <Search className="w-6 h-6 text-cyan-300" />, 
-                position: "bottom"
-              },
-              {
-                targetId: "stats-info",
-                title: "Status & Pot",
-                content: "Monitor current match status, pot size and your magnifier charges here.",
-                icon: <Heart className="w-6 h-6 text-rose-400" />, 
-                position: "bottom"
-              },
-              {
-                targetId: "arena-grid",
-                title: "Arena Grid",
-                content: "Click a chest when it's your turn to reveal items. Use strategy to win the pot.",
-                icon: <Crosshair className="w-6 h-6 text-red-400" />, 
-                position: "right"
-              },
-              {
-                targetId: "btn-magnifier",
-                title: "Magnifier (Peek)",
-                content: "Toggle Magnifier when it's your turn to scan a chest without opening it.",
-                icon: <Search className="w-6 h-6 text-cyan-300" />, 
-                position: "top"
-              },
-              {
-                targetId: "chest-legend",
-                title: "Chest Items",
-                content: "Gun: -1 life to opponent. Health: +1 life (max 5). Skip: opponent loses next turn. Double Kill: -2 lives to opponent. Magnifier: inspect one tile without opening.",
-                icon: <ShieldPlus className="w-6 h-6 text-emerald-400" />,
-                position: "bottom"
-              },
-              {
-                title: "Begin Duel",
-                content: "You're ready — good luck. Remember turn order and watch your lives.",
-                icon: <Users className="w-6 h-6 text-primary" />, 
-                position: "center"
-              }
-            ]}
-          />
-        )}
-
-        {/* chest legend moved to left column */}
-
-        {duelState?.status === "ended" && (
-          <div className="fixed inset-0 z-[260] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-
-            <section className="relative w-full max-w-4xl border-2 border-primary bg-[#020203]/90 p-8 text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-primary mb-2">Match Ended</p>
-              <h2 className="text-3xl md:text-4xl font-black uppercase">Winner: {winner?.name || "Unknown"}</h2>
-
-              <div className="mt-4 grid gap-2">
-                <p className={`text-sm uppercase tracking-widest ${isMeWinner ? "text-emerald-300" : "text-red-300"}`}>
-                  {isMeWinner ? `You won +${duelState.totalPot} BTQ` : `You lost ${duelState.betAmount} BTQ`}
-                </p>
-                <p className="text-sm uppercase tracking-widest text-white/70">
-                  Stake: {duelState.betAmount} BTQ • Pot: {duelState.totalPot} BTQ
-                </p>
-                <p className="text-[11px] text-white/55">Winner receives {duelState.totalPot} BTQ pot</p>
-              </div>
-
-              {isMeWinner && (
-                <div className="mt-6 grid gap-2">
-                  {hasDuelStakePaid(roomId || "") && !hasDuelPayoutClaimed(roomId || "") && (
-                    <button
-                      onClick={() => roomId && claimDuelPayout(roomId, duelState.totalPot)}
-                      disabled={isPayoutPending}
-                      className="px-8 py-4 bg-emerald-400 text-black font-black uppercase tracking-widest disabled:opacity-50"
-                    >
-                      {isPayoutPending ? "Claiming..." : "Claim Winnings"}
-                    </button>
-                  )}
-                  {hasDuelPayoutClaimed(roomId || "") && (
-                    <p className="text-[11px] text-emerald-300 uppercase tracking-widest">Payout confirmed on-chain</p>
-                  )}
-                  {payoutError && (
-                    <p className="text-[11px] text-red-300 uppercase tracking-widest">{payoutError}</p>
-                  )}
-                </div>
+                </>
               )}
 
               <button
                 onClick={() => router.push("/lobby")}
-                className="mt-6 px-8 py-4 bg-primary text-black font-black uppercase tracking-widest"
+                className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white/80 justify-self-start"
               >
-                Back To Lobby
+                ← Exit to Lobby
               </button>
-            </section>
-          </div>
-        )}
-      </div>
+            </div>
+          </motion.div>
+        </div>
+      ) : (
+        <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 md:p-5">
+          <div id="arena-grid" className="absolute inset-x-[18%] top-[24%] bottom-[20%]" />
 
-      {/* Debug: Show Tour button for testing (small, unobtrusive) */}
-      <div className="fixed top-4 right-4 z-[250]">
-        <button
-          id="btn-show-tour"
-          onClick={() => setShowTour(true)}
-          className="px-3 py-2 text-[10px] font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/80 hover:bg-white/10"
+          <div className="flex items-start justify-between gap-3">
+            <div
+              id="player-you"
+              className={`min-w-[150px] md:min-w-[190px] px-4 py-2.5 border-l-4 bg-[#15120e] transition-all relative ${
+                isMyTurn && playing ? "border-[#3fae5a] shadow-[0_0_15px_rgba(63,174,90,0.35)]" : "border-[#5c4a26]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[9px] font-black tracking-[0.3em] text-white/45 uppercase">You</p>
+                {isMyTurn && playing && (
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3fae5a] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3fae5a]" />
+                  </span>
+                )}
+              </div>
+              <p className="text-base md:text-lg font-black italic uppercase tracking-tight truncate max-w-[40vw] md:max-w-[220px]">
+                {me?.name || walletUser}
+              </p>
+              <div className="mt-1.5">{lifePips(myLives, "bg-[#3fae5a]")}</div>
+
+              {playing && isMyTurn && (
+                <motion.div
+                  id="stats-info"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2.5 px-3 py-1 bg-[#3fae5a] text-black text-[10px] md:text-[11px] font-black uppercase tracking-[0.25em] text-center"
+                >
+                  YOUR TURN
+                </motion.div>
+              )}
+            </div>
+
+            <div
+              id="player-rival"
+              className={`min-w-[150px] md:min-w-[190px] px-4 py-2.5 border-r-4 bg-[#15120e] text-right transition-all relative ${
+                !isMyTurn && playing ? "border-[#c0392b] shadow-[0_0_15px_rgba(192,57,43,0.35)]" : "border-[#5c4a26]"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 flex-row-reverse">
+                <p className="text-[9px] font-black tracking-[0.3em] text-white/45 uppercase">Rival</p>
+                {!isMyTurn && playing && (
+                  <span className="flex h-2 w-2 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#c0392b] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#c0392b]" />
+                  </span>
+                )}
+              </div>
+              <p className="text-base md:text-lg font-black italic uppercase tracking-tight truncate max-w-[40vw] md:max-w-[220px] ml-auto">
+                {opponent?.name || "Waiting..."}
+              </p>
+              <div className="mt-1.5 flex justify-end">{lifePips(oppLives, "bg-[#c0392b]")}</div>
+
+              {playing && !isMyTurn && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2.5 px-3 py-1 bg-[#c0392b] text-white text-[10px] md:text-[11px] font-black uppercase tracking-[0.25em] text-center"
+                >
+                  OPPONENT TURN
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-end justify-center gap-3">
+            <div id="chest-legend" className="pointer-events-auto flex gap-1.5 p-1.5 bg-[#15120e] border-2 border-[#8a6a2f]">
+              {(["gun", "double_kill", "health", "skip", "magnifier"] as ChestItem[]).map((item) => (
+                <div key={item} className="group relative h-11 w-11 md:h-12 md:w-12 flex items-center justify-center bg-[#241f18] border border-[#5c4a26] hover:border-[#e2b04a]">
+                  {itemToIcon[item]}
+                  <span className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-[10px] font-bold bg-black/90 border border-white/15 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {itemToLabel[item]}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button
+              id="btn-magnifier"
+              onClick={() => setIsPeekMode((prev) => !prev)}
+              disabled={!isMyTurn || myPeekCharges <= 0 || !playing}
+              className={`pointer-events-auto relative h-14 md:h-[60px] px-5 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] border-2 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                isPeekMode
+                  ? "border-[#e2b04a] bg-[#3a2f1a] text-[#e2b04a]"
+                  : "border-[#8a6a2f] bg-[#15120e] text-[#e8d9b5] hover:border-[#e2b04a]"
+              }`}
+            >
+              <Search className="w-5 h-5" />
+              {isPeekMode ? "Pick a chest" : "Scan"}
+              <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 flex items-center justify-center text-[10px] bg-[#c9973a] text-black">
+                {myPeekCharges}
+              </span>
+            </button>
+          </div>
+
+          <div
+            id="match-pot-info"
+            className="pointer-events-auto absolute bottom-3 left-3 md:bottom-5 md:left-5 flex items-center gap-2.5 px-3.5 py-2 bg-[#15120e] border border-[#8a6a2f]/70"
+          >
+            <span className="h-4 w-4 rounded-full bg-[#e2b04a] border border-[#8a6a2f] shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-xs md:text-sm font-black italic tracking-tight text-amber-300 leading-none">
+                {pot} BTQ POT
+              </span>
+              <span className="text-[8px] md:text-[9px] font-black tracking-widest text-white/40 uppercase mt-0.5">
+                {roomCode ? `Code ${roomCode}` : roomId ? `Match ${roomId.slice(0, 8)}` : "Duel"} · Bet {duelState?.betAmount ?? selectedStake}
+              </span>
+            </div>
+          </div>
+
+          <button
+            id="btn-show-tour"
+            onClick={() => setShowTour(true)}
+            className="pointer-events-auto absolute bottom-3 right-3 md:bottom-5 md:right-5 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest bg-[#15120e] border border-[#5c4a26] text-white/60 hover:text-white"
+          >
+            ? Help
+          </button>
+        </div>
+      )}
+
+      {fx.kind && (
+        <motion.div
+          key={`flash-${fx.key}`}
+          initial={{ opacity: 0.75 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.9 }}
+          className="absolute inset-0 pointer-events-none z-[120]"
+          style={{
+            background:
+              fx.kind === "hit"
+                ? "radial-gradient(circle, transparent 35%, rgba(255,0,40,0.75))"
+                : fx.kind === "heal"
+                  ? "radial-gradient(circle, transparent 45%, rgba(34,255,154,0.5))"
+                  : "radial-gradient(circle, rgba(255,240,200,0.45), transparent 60%)",
+          }}
+        />
+      )}
+
+      {fx.item && !preGame && (
+        <motion.div
+          key={`toast-${fx.key}`}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1.08, 1, 1.05] }}
+          transition={{ duration: 1.9, times: [0, 0.12, 0.8, 1] }}
+          className="absolute inset-x-0 top-[30%] z-[130] pointer-events-none flex flex-col items-center gap-2 text-center px-4"
         >
-          Show Tour
-        </button>
-      </div>
+          <div className="scale-[2.4] mb-4">{itemToIcon[fx.item]}</div>
+          <p className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter drop-">
+            {fx.item === "double_kill" ? "Double Kill" : fx.item}
+          </p>
+          <p className="px-3 py-1 text-[11px] font-black uppercase tracking-[0.25em] bg-black/75">{itemToLabel[fx.item]}</p>
+        </motion.div>
+      )}
+
+      {showTour && !preGame && (
+        <TutorialTour
+          onComplete={handleTourComplete}
+          steps={[
+            {
+              title: "Welcome to the Table",
+              content: "Two players, one grid of chests. Open the right ones and drain your rival's lives to take the pot.",
+              icon: <Users className="w-6 h-6" />,
+              position: "center",
+            },
+            {
+              targetId: "player-you",
+              title: "Your Turn & Health",
+              content: "Watch your health pips here. When it's your move, 'YOUR TURN' lights up in green under your card.",
+              icon: <Heart className="w-6 h-6" />,
+              position: "bottom",
+            },
+            {
+              targetId: "arena-grid",
+              title: "The Chests",
+              content: "On your turn, click a chest to open it. Whatever is inside takes effect immediately.",
+              icon: <Crosshair className="w-6 h-6" />,
+              position: "right",
+            },
+            {
+              targetId: "btn-magnifier",
+              title: "Scan",
+              content: "Spend a scan charge to see inside one chest without opening it.",
+              icon: <Search className="w-6 h-6" />,
+              position: "top",
+            },
+            {
+              targetId: "chest-legend",
+              title: "Chest Items",
+              content: "Gun: -1 life to rival. Double Kill: -2 lives. Health: +1 life. Skip: rival loses a turn. Magnifier: +1 scan.",
+              icon: <ShieldPlus className="w-6 h-6" />,
+              position: "top",
+            },
+          ]}
+        />
+      )}
+
+      {duelState?.status === "ended" && !preGame && (
+        <div className="absolute inset-0 z-[260] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+          <motion.section
+            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 180, damping: 16 }}
+            className={`w-full max-w-xl bg-[#15120e] border-2 p-8 text-center ${
+              isMeWinner ? "border-[#c9973a]" : "border-[#a93226]"
+            }`}
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50">Match Over</p>
+            <h2 className={`mt-2 text-6xl md:text-7xl font-black italic uppercase tracking-tighter ${isMeWinner ? "text-amber-300" : "text-red-500"}`}>
+              {isMeWinner ? "Victory" : "Defeated"}
+            </h2>
+            <p className="mt-2 text-sm font-black uppercase tracking-widest text-white/70">Winner: {winner?.name || "Unknown"}</p>
+            <p className={`mt-5 text-3xl font-black italic ${isMeWinner ? "text-emerald-300" : "text-red-300"}`}>
+              {isMeWinner ? `+${duelState.totalPot}` : `-${duelState.betAmount}`} BTQ
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-widest text-white/45">
+              Stake {duelState.betAmount} · Pot {duelState.totalPot}
+            </p>
+
+            {isMeWinner && (
+              <div className="mt-6 grid gap-2">
+                {hasDuelStakePaid(roomId || "") && !hasDuelPayoutClaimed(roomId || "") && (
+                  <button onClick={() => roomId && claimDuelPayout(roomId, duelState.totalPot)} disabled={isPayoutPending} className={`${plateGold} w-full`}>
+                    {isPayoutPending ? "Claiming..." : "Claim Winnings"}
+                  </button>
+                )}
+                {hasDuelPayoutClaimed(roomId || "") && (
+                  <p className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">Payout confirmed on-chain</p>
+                )}
+                {payoutError && <p className="text-[11px] text-red-300 break-words">{payoutError}</p>}
+              </div>
+            )}
+
+            <button onClick={() => router.push("/lobby")} className={`${plateDark} w-full mt-4`}>
+              Back to Lobby
+            </button>
+          </motion.section>
+        </div>
+      )}
     </main>
   );
 }

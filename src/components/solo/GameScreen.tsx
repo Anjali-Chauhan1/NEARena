@@ -1,15 +1,28 @@
 "use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, X, Zap, Activity, Radio, Cpu, Swords, Loader2 } from 'lucide-react';
-import React, { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useGameStore } from '@/store/useGameStore';
-import { Tile } from './Tile';
-import { StatItem } from '@/components/ui/StatItem';
-import { LossStakingCard } from './LossStakingCard';
 import { useWriteContract } from '@/lib/near/hooks';
 import { btqToYocto } from '@/lib/near/format';
+import type { SoloOutcome, SoloTile } from './SoloArena3D';
+
+const SoloArena3D = dynamic(() => import('./SoloArena3D'), { ssr: false });
+
+const plate =
+    "px-6 py-3.5 text-xs font-black uppercase tracking-[0.22em] transition-all disabled:opacity-40 disabled:cursor-not-allowed [clip-path:polygon(14px_0,100%_0,calc(100%-14px)_100%,0_100%)]";
+const plateGold = `${plate} bg-[#c9973a] text-black hover:bg-[#ddb04f] active:translate-y-px`;
+const plateDark = `${plate} bg-[#2a241b] text-[#e8d9b5] hover:bg-[#3a3225]`;
+const plateRed = `${plate} bg-[#a93226] text-white hover:bg-[#c0392b] active:translate-y-px`;
+
+const OUTCOME_TEXT: Record<SoloOutcome, { title: string; sub: string; color: string }> = {
+    treasure: { title: 'Treasure', sub: 'You found the real chest', color: 'text-[#e2b04a]' },
+    trap: { title: 'Trap', sub: 'Spikes! -2 chances', color: 'text-[#e74c3c]' },
+    empty: { title: 'Empty', sub: 'Nothing here. -1 chance', color: 'text-[#a8a29e]' },
+};
 
 export const GameScreen = () => {
     const { solo, clickTile, setSoloStatus, startLevel, nextLevel } = useGameStore();
@@ -18,6 +31,9 @@ export const GameScreen = () => {
 
     const [isPending, setIsPending] = useState(false);
     const [penaltyError, setPenaltyError] = useState<string | null>(null);
+    const [fx, setFx] = useState<{ key: number; outcome: SoloOutcome | null }>({ key: 0, outcome: null });
+    const [shakeKey, setShakeKey] = useState(0);
+    const prevRevealedRef = useRef<Set<string>>(solo.revealedTiles);
 
     const tryStart = (lvl: number) => {
         const practiceStakes = [5, 10, 15];
@@ -28,17 +44,52 @@ export const GameScreen = () => {
         }
         startLevel(lvl);
     };
-    
+
     const isElite = solo.level > 3;
     const practiceStakes = [5, 10, 15];
     const currentStake = isElite ? solo.stake : (practiceStakes[solo.level - 1] || solo.level * 5);
+    const multiplier = isElite ? (1.5 + (solo.revealedTiles.size * 0.1)) : (1.5 + (solo.level * 0.2));
+    const winAmount = Math.floor(currentStake * multiplier);
+
+    const outcomeAt = (key: string): SoloOutcome => {
+        const [x, y] = key.split(',').map(Number);
+        if (solo.treasurePos?.x === x && solo.treasurePos?.y === y) return 'treasure';
+        if (solo.trapTiles.has(key)) return 'trap';
+        return 'empty';
+    };
+
+    useEffect(() => {
+        const prev = prevRevealedRef.current;
+        prevRevealedRef.current = solo.revealedTiles;
+        if (solo.revealedTiles.size <= prev.size) return;
+        const added = [...solo.revealedTiles].find((k) => !prev.has(k));
+        if (!added) return;
+        const outcome = outcomeAt(added);
+        setFx((f) => ({ key: f.key + 1, outcome }));
+        if (outcome === 'trap') setShakeKey((k) => k + 1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [solo.revealedTiles]);
+
+    const tiles = useMemo<SoloTile[]>(() => {
+        const n = solo.gridSize;
+        return Array.from({ length: n * n }).map((_, i) => {
+            const x = i % n;
+            const y = Math.floor(i / n);
+            const key = `${x},${y}`;
+            const isTreasure = solo.treasurePos?.x === x && solo.treasurePos?.y === y;
+            return {
+                x,
+                y,
+                hasChest: isTreasure || solo.fakeTreasures.has(key),
+                outcome: solo.revealedTiles.has(key) ? outcomeAt(key) : undefined,
+            };
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [solo.gridSize, solo.treasurePos, solo.fakeTreasures, solo.trapTiles, solo.revealedTiles]);
 
     const handleClaimReward = async () => {
         try {
             setIsPending(true);
-            const multiplier = isElite ? (1.5 + (solo.revealedTiles.size * 0.1)) : (1.5 + (solo.level * 0.2));
-            const winAmount = Math.floor(currentStake * multiplier);
-
             await writeContractAsync({
                 functionName: 'record_game_win',
                 args: { reward_amount: btqToYocto(winAmount) },
@@ -71,227 +122,186 @@ export const GameScreen = () => {
         }
     };
 
-    const handleFixPenaltyIssue = () => {
-        setPenaltyError(null);
-        router.push('/lobby');
-    };
-
-    // Win Overlay Component
-    const WinOverlay = () => {
-        const multiplier = isElite ? (1.5 + (solo.revealedTiles.size * 0.1)) : (1.5 + (solo.level * 0.2));
-        const winAmount = Math.floor(currentStake * multiplier);
-
-        return (
-            <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[500] bg-primary/20 backdrop-blur-3xl flex items-center justify-center p-4"
-            >
-                <motion.div 
-                    initial={{ scale: 0.8, y: 50, opacity: 0 }} 
-                    animate={{ scale: 1, y: 0, opacity: 1 }}
-                    className="bg-background border-4 border-primary p-12 text-center shadow-[0_0_120px_rgba(0,242,255,0.6)] relative overflow-hidden"
-                    style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
-                >
-                    <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(0,242,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(0,242,255,0.5)_1px,transparent_1px)] bg-[size:20px_20px]" />
-                    
-                    <h2 className="text-7xl font-black text-primary mb-2 tracking-tighter leading-none neon-text">SYSTEM_BREACHED</h2>
-                    <div className="h-2 w-full bg-primary/20 mb-6" />
-                    <p className="text-xl text-white mb-2 tracking-[0.3em] font-black uppercase">{isElite ? 'ELITE_ARENA_SECURED' : `TREASURE_SECURED // LVL_${solo.level}_CLEAR`}</p>
-                    <div className="flex flex-col mb-10">
-                        <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.4em]">STAKE: {currentStake} BTQ</span>
-                        <p className="text-4xl text-primary font-black tracking-widest">+ {winAmount} BTQ ON-CHAIN</p>
-                        {isElite && (
-                            <span className="text-[11px] text-primary/60 font-black uppercase mt-2">
-                                REWARD SCALED BY {Math.max(1, solo.revealedTiles.size)}X TILE MULTIPLIER
-                            </span>
-                        )}
-                    </div>
-                    
-                    <div className="flex gap-6 justify-center relative z-10">
-                        <button
-                            onClick={() => setSoloStatus('selecting')}
-                            className="px-8 py-3 bg-white/5 border-2 border-white/20 text-white font-black uppercase text-xs tracking-widest transition-all hover:bg-white/10"
-                        >
-                            RETURN_TO_HUB
-                        </button>
-                        <button
-                            onClick={handleClaimReward}
-                            disabled={isPending}
-                            className="px-12 py-4 bg-primary text-black font-black uppercase text-sm tracking-[0.4em] hover:bg-white transition-all shadow-xl flex items-center gap-2 disabled:opacity-50"
-                            style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
-                        >
-                            {isPending ? <Loader2 className="animate-spin w-5 h-5"/> : (isElite ? 'CLAIM & RE-SCAN' : 'CLAIM & NEXT_PHASE ->')}
-                        </button>
-                    </div>
-                </motion.div>
-            </motion.div>
-        );
-    };
-
-    // Loss Overlay Component
-    const LossOverlay = () => (
-        <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[500] bg-red-950/40 backdrop-blur-3xl flex items-center justify-center p-4 text-white"
-        >
-            <motion.div 
-                initial={{ scale: 0.8, x: -50, opacity: 0 }} 
-                animate={{ scale: 1, x: 0, opacity: 1 }}
-                className="bg-black border-4 border-red-600 p-12 text-center shadow-[0_0_100px_rgba(255,0,0,0.5)] relative"
-                style={{ clipPath: 'polygon(0 0, 90% 0, 100% 10%, 100% 100%, 10% 100%, 0 90%)' }}
-            >
-                <div className="absolute top-0 right-0 p-4 opacity-20">
-                    <Activity className="w-12 h-12 text-red-600 animate-pulse" />
-                </div>
-                
-                <h2 className="text-6xl font-black text-red-600 mb-4 tracking-tighter uppercase glitch">MISSION_FAILED</h2>
-                <p className="text-xl text-white/50 mb-10 tracking-widest font-black italic">OUT_OF_ENERGY // SCAN_ABORTED</p>
-                <p className="text-red-400 font-bold mb-4">PENALTY: -{currentStake} BTQ</p>
-                {penaltyError && (
-                    <div className="mb-6 border border-red-600/40 bg-red-950/30 p-4 text-left">
-                        <p className="text-[10px] uppercase tracking-[0.35em] text-red-300 font-black mb-2">PAYMENT_ERROR</p>
-                        <p className="text-xs text-red-100/80 leading-relaxed">{penaltyError}</p>
-                        <p className="text-[11px] text-white/50 mt-2">Open the lobby to switch network, add BTQ, or refresh your wallet balance, then retry the payment.</p>
-                    </div>
-                )}
-                
-                <div className="flex gap-4 justify-center">
-                    <button
-                        onClick={handleFixPenaltyIssue}
-                        className="px-8 py-3 bg-white/5 border border-white/10 text-white/70 font-black uppercase text-xs tracking-widest hover:bg-white/10 transition-all"
-                    >
-                        FIX_IN_LOBBY
-                    </button>
-                    <button
-                        onClick={handlePayPenalty}
-                        disabled={isPending}
-                        className="px-10 py-4 bg-red-600 text-white font-black uppercase text-sm tracking-[0.3em] hover:bg-red-500 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
-                        style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}
-                    >
-                        {isPending ? <Loader2 className="animate-spin w-5 h-5"/> : (penaltyError ? 'RETRY PAYMENT' : 'PAY PENALTY & REBOOT')}
-                    </button>
-                </div>
-            </motion.div>
-        </motion.div>
-    );
+    const playing = solo.gameStatus === 'playing';
+    const lowMoves = solo.movesLeft <= 1;
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden relative font-mono text-white cyber-grid">
-            <AnimatePresence>
-                {solo.gameStatus === 'won' && <WinOverlay />}
-                {solo.gameStatus === 'lost' && <LossOverlay />}
-            </AnimatePresence>
+        <main className="relative h-screen w-full overflow-hidden bg-[#0b0a08] text-white select-none">
+            <div className="absolute inset-0">
+                <SoloArena3D
+                    gridSize={solo.gridSize}
+                    tiles={tiles}
+                    canAct={playing}
+                    onTile={clickTile}
+                    shakeKey={shakeKey}
+                    idle={false}
+                />
+            </div>
 
-            {/* Tactical HUD Header */}
-            <header className="h-20 z-50 w-full bg-background/90 backdrop-blur-md border-b-2 border-primary/20 sticky top-0">
-                <div className="max-w-7xl mx-auto h-full px-8 flex items-center justify-between relative">
-                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-                    
-                    <div className="flex items-center gap-12">
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Radio className="w-3 h-3 text-primary animate-pulse" />
-                                <span className="text-[9px] text-primary font-black tracking-[0.3em] uppercase">Sector_Sync</span>
-                            </div>
-                            <span className="text-xl font-black tracking-tighter text-white uppercase neon-text">
-                                {isElite ? 'ELITE_ARENA' : `UNIT_LVL_${solo.level}`}
-                            </span>
-                        </div>
-                        
-                        <div className="h-10 w-[1px] bg-primary/20" />
+            <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 md:p-5">
+                <div id="arena-grid" className="absolute inset-x-[18%] top-[24%] bottom-[20%]" />
 
-                        <div className="hidden md:flex flex-col text-left">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Activity className="w-3 h-3 text-secondary animate-pulse" />
-                                <span className="text-[9px] text-secondary font-black tracking-[0.3em] uppercase">Energy_Reserve</span>
-                            </div>
-                            <span className={`text-xl font-black tracking-tighter uppercase ${solo.movesLeft <= 1 ? 'text-warning' : 'text-secondary neon-text-secondary'}`}>
-                                {solo.movesLeft} / {solo.totalMoves} CHANCES
-                            </span>
-                        </div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div id="match-id-info" className="min-w-[160px] px-4 py-2.5 border-l-4 border-[#8a6a2f] bg-[#15120e]">
+                        <p className="text-[9px] font-black tracking-[0.3em] text-white/45 uppercase">{isElite ? 'Elite Arena' : 'Practice'}</p>
+                        <p className="text-lg md:text-xl font-black italic uppercase tracking-tight text-[#e8d9b5]">
+                            {isElite ? 'Elite Vault' : `Level ${solo.level}`}
+                        </p>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-white/40 uppercase mt-0.5">
+                            Grid {solo.gridSize}x{solo.gridSize}
+                        </p>
                     </div>
 
-                    <div className="flex items-center gap-8">
-                            <div className="hidden sm:flex items-center gap-6 bg-white/5 px-6 py-2 border-x border-white/10" style={{ clipPath: 'polygon(10% 0, 100% 0, 90% 100%, 0 100%)' }}>
-                            <StatItem icon={<Target className="w-5 h-5 text-primary"/>} value={`${solo.gridSize}x${solo.gridSize}`} label="GRID" />
-                            <div className="w-[1px] h-6 bg-white/10" />
-                            <StatItem icon={<Zap className="w-5 h-5 text-accent"/>} value={`${solo.score}`} label="BTQ" />
+                    <div id="stats-info" className="order-last md:order-none w-full md:w-auto flex flex-col items-center gap-1.5">
+                        <div className="flex items-center gap-3 px-6 py-2 bg-[#15120e] [clip-path:polygon(14px_0,100%_0,calc(100%-14px)_100%,0_100%)]">
+                            <span className={`text-3xl font-black italic tracking-tighter ${lowMoves ? 'text-[#e74c3c]' : 'text-[#e2b04a]'}`}>
+                                {solo.movesLeft}
+                                <span className="text-lg text-white/40">/{solo.totalMoves}</span>
+                            </span>
+                            <span className="text-[10px] font-black tracking-[0.25em] text-white/50 uppercase">Chances</span>
                         </div>
+                        <p className={`px-4 py-1 text-[11px] font-black uppercase tracking-[0.3em] ${playing ? (lowMoves ? 'bg-[#a93226] text-white' : 'bg-[#3fae5a] text-black') : 'bg-[#2a241b] text-white'}`}>
+                            {playing ? (lowMoves ? 'Last chance' : 'Find the treasure') : solo.gameStatus === 'won' ? 'Vault cracked' : 'Out of chances'}
+                        </p>
+                        <p className="text-[9px] font-black tracking-[0.25em] text-white/40 uppercase">
+                            Stake {currentStake} · Win {winAmount} BTQ
+                        </p>
+                    </div>
+
+                    <div className="min-w-[160px] px-4 py-2.5 border-r-4 border-[#8a6a2f] bg-[#15120e] text-right">
+                        <p className="text-[9px] font-black tracking-[0.3em] text-white/45 uppercase">Balance</p>
+                        <p className="text-lg md:text-xl font-black italic tracking-tight text-[#e2b04a]">{solo.score} BTQ</p>
+                        <p className="text-[10px] font-black tracking-[0.2em] text-white/40 uppercase mt-0.5">Solo vault</p>
                     </div>
                 </div>
-            </header>
 
-            {/* Arena Grid Container */}
-            <div className="flex-1 relative flex items-center justify-center p-6 bg-background">
-                <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-accent/10 to-transparent pointer-events-none" />
+                <div className="flex flex-col md:flex-row items-center md:items-end justify-between gap-3">
+                    <div className="hidden md:block max-w-md px-4 py-2.5 bg-[#15120e] border-l-4 border-[#8a6a2f]">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#e2b04a]">How to win</p>
+                        <p className="text-[11px] text-[#e8d9b5]/70 leading-snug mt-1">
+                            One chest holds the treasure, the rest are decoys. Every pick costs a chance. Hidden traps cost two.
+                        </p>
+                    </div>
+                    <div className="pointer-events-auto flex gap-2">
+                        <button onClick={() => setSoloStatus('selecting')} className={plateDark}>
+                            Abort
+                        </button>
+                        <button onClick={() => startLevel(solo.level)} className={plateGold}>
+                            Restart
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className={`grid gap-2 bg-background p-4 border-2 border-primary/30 shadow-[0_0_50px_rgba(0,242,255,0.1)] relative z-30 ${solo.gridSize >= 6 ? 'p-2' : 'p-4'}`}
-                    style={{ 
-                        gridTemplateColumns: `repeat(${solo.gridSize}, minmax(0, 1fr))`,
-                        width: 'min(75vh, 90vw)',
-                        height: 'min(75vh, 90vw)'
+            {fx.outcome && (
+                <motion.div
+                    key={`flash-${fx.key}`}
+                    initial={{ opacity: 0.7 }}
+                    animate={{ opacity: 0 }}
+                    transition={{ duration: 0.9 }}
+                    className="absolute inset-0 pointer-events-none z-[120]"
+                    style={{
+                        background:
+                            fx.outcome === 'trap'
+                                ? 'radial-gradient(circle, transparent 35%, rgba(169,50,38,0.75))'
+                                : fx.outcome === 'treasure'
+                                    ? 'radial-gradient(circle, rgba(226,176,74,0.45), transparent 65%)'
+                                    : 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.5))',
                     }}
+                />
+            )}
+
+            {fx.outcome && playing && (
+                <motion.div
+                    key={`toast-${fx.key}`}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1.08, 1, 1.05] }}
+                    transition={{ duration: 1.6, times: [0, 0.12, 0.8, 1] }}
+                    className="absolute inset-x-0 top-[32%] z-[130] pointer-events-none flex flex-col items-center gap-2 text-center px-4"
                 >
-                    {Array.from({ length: solo.gridSize * solo.gridSize }).map((_, i) => {
-                        const x = i % solo.gridSize;
-                        const y = Math.floor(i / solo.gridSize);
-                        const tileKey = `${x},${y}`;
-                        const isRevealed = solo.revealedTiles.has(tileKey);
-                        const isTreasure = solo.treasurePos?.x === x && solo.treasurePos?.y === y;
-                        const isFake = solo.fakeTreasures.has(tileKey);
-                        const isTrap = solo.trapTiles.has(tileKey);
-
-                        return (
-                            <Tile
-                                key={tileKey}
-                                x={x}
-                                y={y}
-                                isRevealed={isRevealed}
-                                isTreasure={isTreasure}
-                                isFake={isFake}
-                                isTrap={isTrap}
-                                onClick={() => clickTile(x, y)}
-                            />
-                        );
-                    })}
+                    <p className={`text-5xl md:text-7xl font-black italic uppercase tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)] ${OUTCOME_TEXT[fx.outcome].color}`}>
+                        {OUTCOME_TEXT[fx.outcome].title}
+                    </p>
+                    <p className="px-3 py-1 text-[11px] font-black uppercase tracking-[0.25em] bg-[#15120e] text-[#e8d9b5]">
+                        {OUTCOME_TEXT[fx.outcome].sub}
+                    </p>
                 </motion.div>
-            </div>
+            )}
 
-            {/* Tactical Interaction Panel */}
-            <div className="h-32 bg-background border-t-2 border-primary/20 z-50 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-                <div className="max-w-7xl mx-auto h-full px-8 flex items-center justify-between relative">
-                    <div className="flex items-center justify-between w-full gap-12">
-                        <div className="flex flex-col justify-center gap-1 max-w-2xl border-l-2 border-primary/30 pl-6">
-                            <span className="text-[10px] text-primary font-black uppercase tracking-[0.4em]">TREASURE_HUNT_OS</span>
-                            <p className="text-[11px] text-gray-400 font-mono leading-tight uppercase">
-                                &gt; Scan tiles to locate hidden treasure. Each click consumes 1 Charge. <br/>
-                                &gt; Mission fails if Charge reaches 0. Trust your instincts.
+            <AnimatePresence>
+                {solo.gameStatus === 'won' && (
+                    <motion.div
+                        key="won"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ delay: 0.9 }}
+                        className="absolute inset-0 z-[260] flex items-center justify-center p-4 bg-black/65"
+                    >
+                        <motion.section
+                            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ type: 'spring', stiffness: 180, damping: 16, delay: 0.9 }}
+                            className="w-full max-w-xl bg-[#15120e] border-2 border-[#c9973a] p-8 text-center"
+                        >
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50">
+                                {isElite ? 'Elite vault secured' : `Level ${solo.level} cleared`}
                             </p>
-                        </div>
-                        <div className="flex gap-4 items-center">
-                            <button
-                                onClick={() => setSoloStatus('selecting')}
-                                className="relative px-8 py-3 bg-background border border-white/20 text-white font-black uppercase text-[11px] tracking-widest transition-all hover:border-white hover:bg-white/5 active:scale-95"
-                                style={{ clipPath: 'polygon(15% 0, 100% 0, 85% 100%, 0 100%)' }}
-                            >
-                                ABORT_SCAN
-                            </button>
-                            <button
-                                onClick={() => startLevel(solo.level)}
-                                className="relative px-8 py-3 bg-primary text-black font-black uppercase text-[11px] tracking-widest transition-all hover:bg-white active:scale-95"
-                                style={{ clipPath: 'polygon(15% 0, 100% 0, 85% 100%, 0 100%)' }}
-                            >
-                                REBOOT_LEVEL
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                            <h2 className="mt-2 text-6xl md:text-7xl font-black italic uppercase tracking-tighter text-[#e2b04a]">Treasure!</h2>
+                            <p className="mt-5 text-4xl font-black italic text-[#3fae5a]">+{winAmount} BTQ</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-widest text-white/45">
+                                Stake {currentStake} · {multiplier.toFixed(1)}x multiplier
+                            </p>
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                                <button onClick={() => setSoloStatus('selecting')} className={`${plateDark} flex-1`}>
+                                    Back to levels
+                                </button>
+                                <button onClick={handleClaimReward} disabled={isPending} className={`${plateGold} flex-[2] flex items-center justify-center gap-2`}>
+                                    {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : isElite ? 'Claim & play again' : 'Claim & next level'}
+                                </button>
+                            </div>
+                        </motion.section>
+                    </motion.div>
+                )}
+
+                {solo.gameStatus === 'lost' && (
+                    <motion.div
+                        key="lost"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ delay: 0.9 }}
+                        className="absolute inset-0 z-[260] flex items-center justify-center p-4 bg-black/70"
+                    >
+                        <motion.section
+                            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ type: 'spring', stiffness: 180, damping: 16, delay: 0.9 }}
+                            className="w-full max-w-xl bg-[#15120e] border-2 border-[#a93226] p-8 text-center"
+                        >
+                            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50">Out of chances</p>
+                            <h2 className="mt-2 text-6xl md:text-7xl font-black italic uppercase tracking-tighter text-[#c0392b]">Defeated</h2>
+                            <p className="mt-5 text-4xl font-black italic text-[#e74c3c]">-{currentStake} BTQ</p>
+                            <p className="mt-1 text-[11px] uppercase tracking-widest text-white/45">Pay the stake to try this level again</p>
+                            {penaltyError && (
+                                <div className="mt-5 border border-[#a93226]/60 bg-[#2a1210] p-4 text-left">
+                                    <p className="text-[10px] uppercase tracking-[0.3em] text-[#e74c3c] font-black mb-1">Payment failed</p>
+                                    <p className="text-xs text-white/75 break-words">{penaltyError}</p>
+                                    <p className="text-[11px] text-white/45 mt-2">Top up BTQ in the lobby, then retry.</p>
+                                </div>
+                            )}
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                                <button onClick={() => { setPenaltyError(null); router.push('/lobby'); }} className={`${plateDark} flex-1`}>
+                                    Go to lobby
+                                </button>
+                                <button onClick={handlePayPenalty} disabled={isPending} className={`${plateRed} flex-[2] flex items-center justify-center gap-2`}>
+                                    {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : penaltyError ? 'Retry payment' : 'Pay stake & retry'}
+                                </button>
+                            </div>
+                        </motion.section>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </main>
     );
 };
