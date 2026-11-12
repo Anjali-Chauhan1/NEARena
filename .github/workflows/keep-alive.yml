@@ -1,0 +1,23 @@
+name: Keep socket server awake
+
+# Render free instances sleep after 15 min without inbound traffic; ping every 10 min.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /healthz
+        env:
+          SOCKET_SERVER_URL: ${{ vars.SOCKET_SERVER_URL }}
+        run: |
+          if [ -z "$SOCKET_SERVER_URL" ]; then
+            echo "::error::Set the SOCKET_SERVER_URL repository variable (Settings > Secrets and variables > Actions > Variables)"
+            exit 1
+          fi
+          # Generous timeout + retries so a cold start (~50s) still counts as a successful wake-up.
+          curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${SOCKET_SERVER_URL%/}/healthz"

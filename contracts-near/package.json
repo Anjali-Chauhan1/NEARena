@@ -1,0 +1,14 @@
+{
+  "name": "btq-token-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NEP-141 BTQ fungible token contract for NEARena, built with near-sdk-js",
+  "scripts": {
+    "build": "npx near-sdk-js build src/contract.ts build/btq_token.wasm",
+    "deploy": "near contract deploy $NEXT_PUBLIC_NEAR_CONTRACT_NAME use-file build/btq_token.wasm with-init-call init json-args {} prepaid-gas '100 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-keychain send"
+  },
+  "devDependencies": {
+    "near-sdk-js": "^2.0.0",
+    "typescript": "^5"
+  }
+}
