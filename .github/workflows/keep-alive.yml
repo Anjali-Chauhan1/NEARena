@@ -16,8 +16,8 @@ jobs:
           SOCKET_SERVER_URL: ${{ vars.SOCKET_SERVER_URL }}
         run: |
           if [ -z "$SOCKET_SERVER_URL" ]; then
-            echo "::error::Set the SOCKET_SERVER_URL repository variable (Settings > Secrets and variables > Actions > Variables)"
-            exit 1
+            echo "::warning::SOCKET_SERVER_URL is not set; skipping keep-alive ping. Configure it in Settings > Secrets and variables > Actions > Variables."
+            exit 0
           fi
           # Generous timeout + retries so a cold start (~50s) still counts as a successful wake-up.
           curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${SOCKET_SERVER_URL%/}/healthz"
